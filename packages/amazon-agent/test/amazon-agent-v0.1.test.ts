@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-	DelimitedTextError,
 	calculateAdvertisingMetrics,
+	DelimitedTextError,
 	inspectAdvertisingReport,
+	type NormalizedAdvertisingRow,
 	normalizeSearchTermReport,
 	parseDelimitedText,
-	type NormalizedAdvertisingRow,
 } from "../../amazon-agent/src/index.ts";
 
 describe("Amazon Seller Agent V0.1 domain foundation", () => {
@@ -112,9 +112,7 @@ describe("Amazon Seller Agent V0.1 domain foundation", () => {
 
 		expect(inspection.kind).toBe("unknown");
 		expect(inspection.missingFields).toContain("attributedSales");
-		expect(() => normalizeSearchTermReport({ content, fileName: "missing-sales.csv" })).toThrow(
-			/required fields/i,
-		);
+		expect(() => normalizeSearchTermReport({ content, fileName: "missing-sales.csv" })).toThrow(/required fields/i);
 	});
 
 	it("reports invalid numeric cells as warnings and never fabricates zero", () => {

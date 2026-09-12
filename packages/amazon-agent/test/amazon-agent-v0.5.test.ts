@@ -1,10 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import {
-	buildSellerActionPlan,
-	type Finding,
-	type ProfitabilityFinding,
-} from "../src/index.ts";
+import { buildSellerActionPlan, type Finding, type ProfitabilityFinding } from "../src/index.ts";
 
 function ppcFinding(overrides: Partial<Finding> = {}): Finding {
 	return {

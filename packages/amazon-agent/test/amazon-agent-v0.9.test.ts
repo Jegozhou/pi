@@ -148,7 +148,9 @@ describe("Amazon V0.9 execution dry run", () => {
 	});
 
 	it("rejects approved status without an approved decision", () => {
-		expect(() => createSellerApprovalEnvelope(approvedChangeSet({ decision: null }), TEST_SECRET)).toThrow(/approved|decision/i);
+		expect(() => createSellerApprovalEnvelope(approvedChangeSet({ decision: null }), TEST_SECRET)).toThrow(
+			/approved|decision/i,
+		);
 	});
 
 	it("rejects a stale expected version", () => {
@@ -191,7 +193,10 @@ describe("Amazon V0.9 execution dry run", () => {
 			sourceActionItemIds: ["action:negative", "action:bid-down"],
 			proposals: [negativeProposal(), bidProposal()],
 		});
-		expect(result.operations.map((operation) => operation.proposalId)).toEqual(["change:negative", "change:bid-down"]);
+		expect(result.operations.map((operation) => operation.proposalId)).toEqual([
+			"change:negative",
+			"change:bid-down",
+		]);
 	});
 
 	it("does not mutate the signed approval envelope", () => {

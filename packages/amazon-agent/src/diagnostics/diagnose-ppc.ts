@@ -27,11 +27,7 @@ function validatePolicy(policy: PpcPolicy): void {
 	if (!Number.isFinite(policy.highAcosMultiplier) || policy.highAcosMultiplier < 1) {
 		throw new RangeError("highAcosMultiplier must be a finite number greater than or equal to 1");
 	}
-	if (
-		!Number.isFinite(policy.lowAcosScaleMargin) ||
-		policy.lowAcosScaleMargin < 0 ||
-		policy.lowAcosScaleMargin >= 1
-	) {
+	if (!Number.isFinite(policy.lowAcosScaleMargin) || policy.lowAcosScaleMargin < 0 || policy.lowAcosScaleMargin >= 1) {
 		throw new RangeError("lowAcosScaleMargin must be a finite number in [0, 1)");
 	}
 }

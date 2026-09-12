@@ -70,9 +70,7 @@ export function parseDelimitedText(input: string, delimiter: ReportDelimiter): s
 		const width = rows[0].length;
 		for (let index = 1; index < rows.length; index += 1) {
 			if (rows[index].length !== width) {
-				throw new DelimitedTextError(
-					`Row ${index + 1} has ${rows[index].length} fields; expected ${width}`,
-				);
+				throw new DelimitedTextError(`Row ${index + 1} has ${rows[index].length} fields; expected ${width}`);
 			}
 		}
 	}

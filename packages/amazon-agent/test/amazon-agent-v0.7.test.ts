@@ -3,8 +3,8 @@ import {
 	buildSellerActionPlan,
 	buildSellerChangeSet,
 	enrichSellerChangeSet,
-	normalizeTargetSnapshot,
 	type Finding,
+	normalizeTargetSnapshot,
 } from "../src/index.ts";
 
 function finding(type: Finding["recommendedAction"]["type"] = "negative-exact-candidate"): Finding {
@@ -91,8 +91,16 @@ describe("Amazon V0.7 target snapshot resolver", () => {
 
 		expect(proposal.readiness).toBe("ready");
 		expect(proposal.missingInputs).toEqual([]);
-		expect(proposal.before).toMatchObject({ campaignId: "1001", adGroupId: "2001", searchTerm: "trail running shoes" });
-		expect(proposal.after).toMatchObject({ campaignId: "1001", adGroupId: "2001", negativeExact: "trail running shoes" });
+		expect(proposal.before).toMatchObject({
+			campaignId: "1001",
+			adGroupId: "2001",
+			searchTerm: "trail running shoes",
+		});
+		expect(proposal.after).toMatchObject({
+			campaignId: "1001",
+			adGroupId: "2001",
+			negativeExact: "trail running shoes",
+		});
 		expect(result.diagnostics.resolvedProposalIds).toEqual([proposal.id]);
 	});
 
@@ -102,13 +110,21 @@ describe("Amazon V0.7 target snapshot resolver", () => {
 		const proposal = result.changeSet.proposals[0];
 
 		expect(proposal.readiness).toBe("blocked");
-		expect(proposal.before).toMatchObject({ campaignId: "1001", adGroupId: "2001", targetId: "3001", currentBid: 1.2 });
+		expect(proposal.before).toMatchObject({
+			campaignId: "1001",
+			adGroupId: "2001",
+			targetId: "3001",
+			currentBid: 1.2,
+		});
 		expect(proposal.after).toBeNull();
 		expect(proposal.missingInputs).toEqual(["proposed bid"]);
 	});
 
 	it("does not guess when no target snapshot row matches", () => {
-		const parsed = normalizeTargetSnapshot({ content: snapshotCsv.replace("SP Discovery", "Other Campaign"), fileName: "targets.csv" });
+		const parsed = normalizeTargetSnapshot({
+			content: snapshotCsv.replace("SP Discovery", "Other Campaign"),
+			fileName: "targets.csv",
+		});
 		const result = enrichSellerChangeSet(changeSet(), parsed);
 		expect(result.changeSet.proposals[0].readiness).toBe("blocked");
 		expect(result.diagnostics.unresolvedProposalIds).toEqual([result.changeSet.proposals[0].id]);

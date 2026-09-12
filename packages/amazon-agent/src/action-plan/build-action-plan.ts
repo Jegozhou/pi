@@ -23,10 +23,14 @@ function evidenceLocation(evidence: Array<{ sourceFile: string; sourceRow: numbe
 
 function ppcRank(finding: Finding): { score: number; stage: SellerActionStage } {
 	switch (finding.category) {
-		case "waste": return { score: 400, stage: "stop-loss" };
-		case "bid-down": return { score: 300, stage: "optimize" };
-		case "migration": return { score: 200, stage: "optimize" };
-		case "scale": return { score: 100, stage: "grow" };
+		case "waste":
+			return { score: 400, stage: "stop-loss" };
+		case "bid-down":
+			return { score: 300, stage: "optimize" };
+		case "migration":
+			return { score: 200, stage: "optimize" };
+		case "scale":
+			return { score: 100, stage: "grow" };
 	}
 }
 
@@ -50,9 +54,9 @@ function createItem(options: {
 	const context = ppcFinding?.context;
 	const decisionContext = ppcFinding
 		? {
-			observedAcos: ppcFinding.metrics.acos,
-			targetAcos: typeof ppcFinding.thresholds.targetAcos === "number" ? ppcFinding.thresholds.targetAcos : null,
-		}
+				observedAcos: ppcFinding.metrics.acos,
+				targetAcos: typeof ppcFinding.thresholds.targetAcos === "number" ? ppcFinding.thresholds.targetAcos : null,
+			}
 		: undefined;
 	return {
 		id: `action:${options.source}:${finding.id}`,
@@ -88,7 +92,10 @@ export function buildSellerActionPlan(input: SellerActionPlanInput): SellerActio
 		if (seen.has(dedupeKey)) continue;
 		seen.add(dedupeKey);
 		const rank = ppcRank(finding);
-		candidates.push({ score: rank.score, item: createItem({ source: "ppc", stage: rank.stage, dataQuality: "not-applicable", finding }) });
+		candidates.push({
+			score: rank.score,
+			item: createItem({ source: "ppc", stage: rank.stage, dataQuality: "not-applicable", finding }),
+		});
 	}
 
 	for (const finding of input.profitabilityFindings) {
@@ -96,7 +103,10 @@ export function buildSellerActionPlan(input: SellerActionPlanInput): SellerActio
 		if (seen.has(dedupeKey)) continue;
 		seen.add(dedupeKey);
 		const rank = profitabilityRank(finding);
-		candidates.push({ score: rank.score, item: createItem({ source: "profitability", stage: rank.stage, dataQuality: finding.dataQuality, finding }) });
+		candidates.push({
+			score: rank.score,
+			item: createItem({ source: "profitability", stage: rank.stage, dataQuality: finding.dataQuality, finding }),
+		});
 	}
 
 	candidates.sort((left, right) => {

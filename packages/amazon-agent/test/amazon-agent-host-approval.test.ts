@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { verifySellerApprovalEnvelope, type SellerChangeProposal, type SellerChangeSet } from "../src/index.ts";
 import { confirmSellerChangeSetDecision } from "../../../.pi/extensions/amazon-seller/approval-flow.ts";
+import { type SellerChangeProposal, type SellerChangeSet, verifySellerApprovalEnvelope } from "../src/index.ts";
 
 function readyProposal(): SellerChangeProposal {
 	return {

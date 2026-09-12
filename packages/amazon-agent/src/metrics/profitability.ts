@@ -5,8 +5,7 @@ import type {
 } from "../types/profitability.ts";
 
 export function calculateProfitabilityMetrics(row: NormalizedProfitabilityRow): ProfitabilityMetrics {
-	const knownCogsTotal =
-		row.unitsSold !== null && row.cogsPerUnit !== null ? row.unitsSold * row.cogsPerUnit : null;
+	const knownCogsTotal = row.unitsSold !== null && row.cogsPerUnit !== null ? row.unitsSold * row.cogsPerUnit : null;
 	const missingCostCategories: ProfitabilityCostCategory[] = [];
 	const knownCosts: number[] = [];
 

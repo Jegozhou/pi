@@ -63,8 +63,12 @@ describe.skipIf(!hasModelManifest)("Amazon registered host approval tools", () =
 		expect(decide).toBeDefined();
 		const params = { changeSetJson: JSON.stringify(awaitingChangeSet()), decision: "approve", actor: "seller" };
 
-		await expect(decide!.execute("tool-call", params, undefined, undefined, toolContext(false, true))).rejects.toThrow(/host ui|dialog/i);
-		await expect(decide!.execute("tool-call", params, undefined, undefined, toolContext(true, false))).rejects.toThrow(/did not confirm/i);
+		await expect(
+			decide!.execute("tool-call", params, undefined, undefined, toolContext(false, true)),
+		).rejects.toThrow(/host ui|dialog/i);
+		await expect(
+			decide!.execute("tool-call", params, undefined, undefined, toolContext(true, false)),
+		).rejects.toThrow(/did not confirm/i);
 	});
 
 	it("host confirmation returns a signed envelope accepted by the registered dry-run tool", async () => {

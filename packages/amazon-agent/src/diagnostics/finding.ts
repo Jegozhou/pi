@@ -1,11 +1,5 @@
 import type { AdvertisingMetrics, NormalizedAdvertisingRow } from "../types/advertising.ts";
-import type {
-	Finding,
-	FindingCategory,
-	FindingConfidence,
-	FindingPriority,
-	RecommendedAction,
-} from "./types.ts";
+import type { Finding, FindingCategory, FindingConfidence, FindingPriority, RecommendedAction } from "./types.ts";
 
 export function createFinding(options: {
 	ruleId: string;

@@ -1,4 +1,3 @@
-import { parseDelimitedText } from "./delimited.ts";
 import type { ReportDelimiter } from "../types/advertising.ts";
 import type {
 	NormalizedTargetSnapshotRow,
@@ -7,6 +6,7 @@ import type {
 	TargetSnapshotSemanticField,
 	TargetSnapshotWarning,
 } from "../types/targeting.ts";
+import { parseDelimitedText } from "./delimited.ts";
 
 type ColumnMap = Partial<Record<TargetSnapshotSemanticField, number>>;
 
@@ -25,7 +25,10 @@ const HEADER_ALIASES: Readonly<Record<TargetSnapshotSemanticField, readonly stri
 };
 
 function canonicalizeHeader(value: string): string {
-	return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+	return value
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9]/g, "");
 }
 
 function detectDelimiter(content: string): ReportDelimiter {
@@ -69,7 +72,10 @@ function cell(row: readonly string[], columns: ColumnMap, field: TargetSnapshotS
 	return value === undefined || value.trim() === "" ? null : value.trim();
 }
 
-function parseBid(rawValue: string | null, sourceRow: number): { value: number | null; warning: TargetSnapshotWarning | null } {
+function parseBid(
+	rawValue: string | null,
+	sourceRow: number,
+): { value: number | null; warning: TargetSnapshotWarning | null } {
 	if (rawValue === null) return { value: null, warning: null };
 	const value = Number(rawValue);
 	if (!Number.isFinite(value) || value <= 0) {

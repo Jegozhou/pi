@@ -18,7 +18,10 @@ const DISCOVERY_MATCH_TYPES = new Set([
 
 function normalizeMatchType(matchType: string | null): string | null {
 	if (matchType === null) return null;
-	const normalized = matchType.trim().toLowerCase().replace(/[^a-z]/g, "");
+	const normalized = matchType
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z]/g, "");
 	return normalized.length === 0 ? null : normalized;
 }
 
@@ -48,7 +51,8 @@ export function evaluateEfficientSearchTerm(
 			targetAcos: policy.targetAcos,
 			minimumOrdersScale: policy.minimumOrdersScale,
 		},
-		rationale: "The search term has enough attributed orders, meets the seller ACOS target, and came from discovery-style targeting.",
+		rationale:
+			"The search term has enough attributed orders, meets the seller ACOS target, and came from discovery-style targeting.",
 		recommendedAction: {
 			type: "exact-target-candidate",
 			summary: "Review this search term for isolation as an exact target while preserving discovery coverage.",
@@ -84,7 +88,8 @@ export function evaluateScaleEfficientTarget(
 			"The search term has enough attributed orders, ACOS is sufficiently below the seller target, and its source targeting context is present for a cautious scaling review.",
 		recommendedAction: {
 			type: "scale-candidate",
-			summary: "Review the identified source target for cautious bid or budget scaling; budget exhaustion is not inferred from this report.",
+			summary:
+				"Review the identified source target for cautious bid or budget scaling; budget exhaustion is not inferred from this report.",
 		},
 	});
 }

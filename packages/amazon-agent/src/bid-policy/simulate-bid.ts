@@ -1,9 +1,4 @@
-import type {
-	BidPolicy,
-	BidPolicyOverrides,
-	BidSimulation,
-	BidSimulationInput,
-} from "./types.ts";
+import type { BidPolicy, BidPolicyOverrides, BidSimulation, BidSimulationInput } from "./types.ts";
 
 export const DEFAULT_BID_POLICY: BidPolicy = {
 	maxDecreaseFraction: 0.2,
@@ -19,7 +14,11 @@ function requirePositiveFinite(value: number, label: string): void {
 
 function resolvePolicy(overrides: BidPolicyOverrides): BidPolicy {
 	const policy = { ...DEFAULT_BID_POLICY, ...overrides };
-	if (!Number.isFinite(policy.maxDecreaseFraction) || policy.maxDecreaseFraction <= 0 || policy.maxDecreaseFraction >= 1) {
+	if (
+		!Number.isFinite(policy.maxDecreaseFraction) ||
+		policy.maxDecreaseFraction <= 0 ||
+		policy.maxDecreaseFraction >= 1
+	) {
 		throw new RangeError("maxDecreaseFraction must be a finite number in (0, 1)");
 	}
 	if (!Number.isFinite(policy.minimumBid) || policy.minimumBid <= 0) {
@@ -36,10 +35,7 @@ function roundCurrency(value: number, decimals: number): number {
 	return Math.round((value + Number.EPSILON) * factor) / factor;
 }
 
-export function simulateBidChange(
-	input: BidSimulationInput,
-	policyOverrides: BidPolicyOverrides = {},
-): BidSimulation {
+export function simulateBidChange(input: BidSimulationInput, policyOverrides: BidPolicyOverrides = {}): BidSimulation {
 	requirePositiveFinite(input.currentBid, "currentBid");
 	requirePositiveFinite(input.observedAcos, "observedAcos");
 	requirePositiveFinite(input.targetAcos, "targetAcos");

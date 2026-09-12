@@ -31,11 +31,11 @@ function canonicalize(value: unknown): unknown {
 function digestPayload(changeSet: SellerChangeSet): Record<string, unknown> {
 	const decision = changeSet.decision
 		? {
-			outcome: changeSet.decision.outcome,
-			actor: changeSet.decision.actor,
-			decidedAt: changeSet.decision.decidedAt,
-			provenance: changeSet.decision.provenance ?? null,
-		}
+				outcome: changeSet.decision.outcome,
+				actor: changeSet.decision.actor,
+				decidedAt: changeSet.decision.decidedAt,
+				provenance: changeSet.decision.provenance ?? null,
+			}
 		: null;
 	return {
 		id: changeSet.id,
@@ -77,9 +77,7 @@ export function createSellerApprovalEnvelope(
 	secret: SellerApprovalSecret,
 ): SellerApprovalEnvelope {
 	const contentDigest = assertApprovedDigest(changeSet);
-	const signature = createHmac("sha256", secret)
-		.update(approvalMessage(changeSet, contentDigest))
-		.digest("hex");
+	const signature = createHmac("sha256", secret).update(approvalMessage(changeSet, contentDigest)).digest("hex");
 	return {
 		changeSet: structuredClone(changeSet),
 		proof: { algorithm: "hmac-sha256", contentDigest, signature },

@@ -1,7 +1,7 @@
 import {
-	verifySellerApprovalEnvelope,
 	type SellerApprovalEnvelope,
 	type SellerApprovalSecret,
+	verifySellerApprovalEnvelope,
 } from "../approval/approval-envelope.ts";
 import type { SellerChangeProposal, SellerChangeSet } from "../change-set/types.ts";
 import type {
@@ -135,7 +135,9 @@ export function buildSellerExecutionDryRun(
 		(proposal) => isMutatingProposal(proposal) && proposal.readiness === "blocked",
 	);
 	if (blockedMutating.length > 0) {
-		throw new Error(`Cannot build execution dry run while ${blockedMutating.length} mutating proposal(s) are blocked`);
+		throw new Error(
+			`Cannot build execution dry run while ${blockedMutating.length} mutating proposal(s) are blocked`,
+		);
 	}
 
 	const operations: SellerDryRunOperation[] = [];

@@ -1,8 +1,5 @@
 import { diagnosePpc } from "../diagnostics/diagnose-ppc.ts";
-import {
-	diagnoseProfitability,
-	type ProfitabilityPolicy,
-} from "../diagnostics/diagnose-profit.ts";
+import { diagnoseProfitability, type ProfitabilityPolicy } from "../diagnostics/diagnose-profit.ts";
 import { DEFAULT_PPC_POLICY } from "../diagnostics/policy.ts";
 import type { Finding, FindingCategory, PpcPolicy } from "../diagnostics/types.ts";
 import { calculateProfitabilityMetrics } from "../metrics/profitability.ts";
@@ -63,10 +60,14 @@ export function buildPpcDiagnosisResult(
 ): PpcDiagnosisResult {
 	const inspection = inspectAdvertisingReport({ content, fileName });
 	if (inspection.kind !== "sponsored-products-search-term") {
-		throw new Error(`Unsupported report for PPC diagnosis; missing required fields: ${inspection.missingFields.join(", ")}`);
+		throw new Error(
+			`Unsupported report for PPC diagnosis; missing required fields: ${inspection.missingFields.join(", ")}`,
+		);
 	}
 	if (inspection.warnings.length > 0) {
-		throw new Error(`Invalid numeric data in PPC report: ${inspection.warnings.map((warning) => warning.message).join("; ")}`);
+		throw new Error(
+			`Invalid numeric data in PPC report: ${inspection.warnings.map((warning) => warning.message).join("; ")}`,
+		);
 	}
 
 	const policy: PpcPolicy = { ...DEFAULT_PPC_POLICY, ...policyOverrides };
@@ -78,7 +79,9 @@ export function buildPpcDiagnosisResult(
 		(row) => row.impressions === null || row.clicks === null || row.spend === null || row.attributedSales === null,
 	);
 	if (incompleteRow) {
-		throw new Error(`Insufficient PPC data at source row ${incompleteRow.sourceRow}: required numeric value is blank`);
+		throw new Error(
+			`Insufficient PPC data at source row ${incompleteRow.sourceRow}: required numeric value is blank`,
+		);
 	}
 	const findings = diagnosePpc(rows, policy);
 	const byCategory: Record<FindingCategory, number> = {

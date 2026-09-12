@@ -1,4 +1,3 @@
-import { parseDelimitedText } from "./delimited.ts";
 import type { ReportDelimiter } from "../types/advertising.ts";
 import type {
 	NormalizedProfitabilityRow,
@@ -6,13 +5,9 @@ import type {
 	ProfitabilityReportInspection,
 	ProfitabilityWarning,
 } from "../types/profitability.ts";
+import { parseDelimitedText } from "./delimited.ts";
 
-type ProfitabilitySemanticField =
-	| "marketplace"
-	| "asin"
-	| "sku"
-	| ProfitabilityNumericField
-	| "currency";
+type ProfitabilitySemanticField = "marketplace" | "asin" | "sku" | ProfitabilityNumericField | "currency";
 
 type ColumnMap = Partial<Record<ProfitabilitySemanticField, number>>;
 
@@ -45,7 +40,10 @@ const HEADER_ALIASES: Readonly<Record<ProfitabilitySemanticField, readonly strin
 };
 
 function canonicalizeHeader(value: string): string {
-	return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+	return value
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9]/g, "");
 }
 
 function detectDelimiter(content: string): ReportDelimiter {
@@ -93,10 +91,10 @@ function parseNumber(
 	return { value, warning: null };
 }
 
-export function normalizeProfitabilityReport(options: {
-	content: string;
-	fileName: string;
-}): { inspection: ProfitabilityReportInspection; rows: NormalizedProfitabilityRow[] } {
+export function normalizeProfitabilityReport(options: { content: string; fileName: string }): {
+	inspection: ProfitabilityReportInspection;
+	rows: NormalizedProfitabilityRow[];
+} {
 	const delimiter = detectDelimiter(options.content);
 	const parsedRows = parseDelimitedText(options.content, delimiter);
 	const headers = parsedRows[0] ?? [];

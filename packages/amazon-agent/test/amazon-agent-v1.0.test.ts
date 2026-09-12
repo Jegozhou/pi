@@ -91,10 +91,7 @@ describe("Amazon Seller Agent V1.0 file-first acceptance", () => {
 		const envelope = createSellerApprovalEnvelope(approved, secret);
 		const dryRun = buildSellerExecutionDryRun(envelope, secret, { expectedVersion: approved.version });
 		expect(dryRun.writesPerformed).toBe(false);
-		expect(dryRun.operations.map((operation) => operation.operation)).toEqual([
-			"add-negative-exact",
-			"set-bid",
-		]);
+		expect(dryRun.operations.map((operation) => operation.operation)).toEqual(["add-negative-exact", "set-bid"]);
 		expect(dryRun.operations[0]).toMatchObject({
 			campaignId: "1001",
 			adGroupId: "2001",

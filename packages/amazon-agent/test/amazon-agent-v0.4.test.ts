@@ -3,8 +3,8 @@ import {
 	buildProfitDiagnosisResult,
 	calculateProfitabilityMetrics,
 	diagnoseProfitability,
-	normalizeProfitabilityReport,
 	type NormalizedProfitabilityRow,
+	normalizeProfitabilityReport,
 } from "../../amazon-agent/src/index.ts";
 
 function completeRow(overrides: Partial<NormalizedProfitabilityRow> = {}): NormalizedProfitabilityRow {

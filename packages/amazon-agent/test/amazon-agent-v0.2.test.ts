@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	diagnosePpc,
-	type NormalizedAdvertisingRow,
-	type PpcPolicy,
-} from "../../amazon-agent/src/index.ts";
+import { diagnosePpc, type NormalizedAdvertisingRow, type PpcPolicy } from "../../amazon-agent/src/index.ts";
 
 const policy: PpcPolicy = {
 	targetAcos: 0.3,
@@ -64,9 +60,7 @@ describe("Amazon PPC deterministic diagnosis", () => {
 	});
 
 	it("flags materially high ACOS only with conversion evidence", () => {
-		const findings = diagnosePpc([
-			row({ spend: 60, attributedSales: 100, attributedOrders: 2 }),
-		], policy);
+		const findings = diagnosePpc([row({ spend: 60, attributedSales: 100, attributedOrders: 2 })], policy);
 		const finding = findings.find((item) => item.ruleId === "ppc.high-acos.v1");
 
 		expect(finding).toMatchObject({
@@ -78,16 +72,15 @@ describe("Amazon PPC deterministic diagnosis", () => {
 	});
 
 	it("does not use the high-ACOS rule when there are no attributed orders", () => {
-		const findings = diagnosePpc([
-			row({ spend: 60, attributedSales: 100, attributedOrders: 0 }),
-		], policy);
+		const findings = diagnosePpc([row({ spend: 60, attributedSales: 100, attributedOrders: 0 })], policy);
 		expect(findings.some((finding) => finding.ruleId === "ppc.high-acos.v1")).toBe(false);
 	});
 
 	it("creates an exact-migration candidate for an efficient discovery term", () => {
-		const findings = diagnosePpc([
-			row({ spend: 20, attributedSales: 100, attributedOrders: 4, matchType: "BROAD" }),
-		], policy);
+		const findings = diagnosePpc(
+			[row({ spend: 20, attributedSales: 100, attributedOrders: 4, matchType: "BROAD" })],
+			policy,
+		);
 		const finding = findings.find((item) => item.ruleId === "ppc.efficient-search-term.v1");
 
 		expect(finding).toMatchObject({
@@ -99,17 +92,16 @@ describe("Amazon PPC deterministic diagnosis", () => {
 
 	it("does not recommend exact migration when discovery context is unknown or exact", () => {
 		for (const matchType of [null, "EXACT"] as const) {
-			const findings = diagnosePpc([
-				row({ spend: 20, attributedSales: 100, attributedOrders: 4, matchType }),
-			], policy);
+			const findings = diagnosePpc(
+				[row({ spend: 20, attributedSales: 100, attributedOrders: 4, matchType })],
+				policy,
+			);
 			expect(findings.some((finding) => finding.ruleId === "ppc.efficient-search-term.v1")).toBe(false);
 		}
 	});
 
 	it("creates a scale candidate only when ACOS is sufficiently below the seller target", () => {
-		const findings = diagnosePpc([
-			row({ spend: 20, attributedSales: 100, attributedOrders: 4 }),
-		], policy);
+		const findings = diagnosePpc([row({ spend: 20, attributedSales: 100, attributedOrders: 4 })], policy);
 		const finding = findings.find((item) => item.ruleId === "ppc.scale-efficient-target.v1");
 
 		expect(finding).toMatchObject({
@@ -120,10 +112,10 @@ describe("Amazon PPC deterministic diagnosis", () => {
 	});
 
 	it("suppresses target-dependent rules when the seller has no target ACOS", () => {
-		const findings = diagnosePpc(
-			[row({ spend: 20, attributedSales: 100, attributedOrders: 4 })],
-			{ ...policy, targetAcos: null },
-		);
+		const findings = diagnosePpc([row({ spend: 20, attributedSales: 100, attributedOrders: 4 })], {
+			...policy,
+			targetAcos: null,
+		});
 		expect(findings.map((finding) => finding.ruleId)).toEqual([]);
 	});
 

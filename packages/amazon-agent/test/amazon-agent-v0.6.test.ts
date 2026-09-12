@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
 	buildSellerChangeSet,
 	decideSellerChangeSet,
-	requestSellerChangeSetApproval,
 	type Finding,
 	type ProfitabilityFinding,
+	requestSellerChangeSetApproval,
 	type SellerActionPlan,
 	type SellerChangeSet,
 } from "../src/index.ts";
@@ -125,7 +125,11 @@ function readyChangeSet(): SellerChangeSet {
 	};
 }
 
-function hostDecisionInput(decision: "approve" | "reject", actor = "seller@example", decidedAt = "2026-09-13T00:00:00.000Z") {
+function hostDecisionInput(
+	decision: "approve" | "reject",
+	actor = "seller@example",
+	decidedAt = "2026-09-13T00:00:00.000Z",
+) {
 	return { decision, actor, decidedAt, provenance: "host-ui-confirmation" as const };
 }
 
@@ -152,7 +156,9 @@ describe("Amazon Seller Agent V0.6 change sets and approval gate", () => {
 			before: null,
 			after: null,
 		});
-		expect(proposal?.missingInputs).toEqual(expect.arrayContaining(["target identity", "current bid", "proposed bid"]));
+		expect(proposal?.missingInputs).toEqual(
+			expect.arrayContaining(["target identity", "current bid", "proposed bid"]),
+		);
 	});
 
 	it("keeps profitability work review-only instead of inventing an Amazon mutation", () => {
@@ -209,14 +215,16 @@ describe("Amazon Seller Agent V0.6 change sets and approval gate", () => {
 	});
 
 	it("fails closed on invalid lifecycle transitions", () => {
-		expect(() =>
-			decideSellerChangeSet(buildSellerChangeSet(actionPlan()), hostDecisionInput("approve")),
-		).toThrow(/awaiting-approval/i);
+		expect(() => decideSellerChangeSet(buildSellerChangeSet(actionPlan()), hostDecisionInput("approve"))).toThrow(
+			/awaiting-approval/i,
+		);
 	});
 
 	it("validates actor and timestamp and remains deterministic", () => {
 		const awaiting = requestSellerChangeSetApproval(readyChangeSet());
 		expect(() => decideSellerChangeSet(awaiting, hostDecisionInput("approve", " "))).toThrow(/actor/i);
-		expect(() => decideSellerChangeSet(awaiting, hostDecisionInput("approve", "seller@example", "not-a-date"))).toThrow(/timestamp/i);
+		expect(() =>
+			decideSellerChangeSet(awaiting, hostDecisionInput("approve", "seller@example", "not-a-date")),
+		).toThrow(/timestamp/i);
 	});
 });

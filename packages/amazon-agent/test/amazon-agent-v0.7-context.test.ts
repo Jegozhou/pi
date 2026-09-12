@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	buildPpcDiagnosisResult,
-	buildSellerActionPlan,
-	buildSellerChangeSet,
-} from "../src/index.ts";
+import { buildPpcDiagnosisResult, buildSellerActionPlan, buildSellerChangeSet } from "../src/index.ts";
 
 const report = [
 	"Campaign Name,Ad Group Name,Targeting,Match Type,Customer Search Term,Impressions,Clicks,Spend,7 Day Total Orders (#),7 Day Total Sales,Currency",

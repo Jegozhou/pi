@@ -1,9 +1,5 @@
 import type { NormalizedTargetSnapshotRow, TargetSnapshotParseResult } from "../types/targeting.ts";
-import type {
-	SellerChangeProposal,
-	SellerChangeSet,
-	SellerChangeSetEnrichmentResult,
-} from "./types.ts";
+import type { SellerChangeProposal, SellerChangeSet, SellerChangeSetEnrichmentResult } from "./types.ts";
 
 function normalized(value: string | null | undefined): string {
 	return (value ?? "").trim().toLowerCase();
@@ -36,7 +32,10 @@ function cloneProposal(proposal: SellerChangeProposal): SellerChangeProposal {
 	};
 }
 
-function adGroupMatches(proposal: SellerChangeProposal, rows: readonly NormalizedTargetSnapshotRow[]): NormalizedTargetSnapshotRow[] {
+function adGroupMatches(
+	proposal: SellerChangeProposal,
+	rows: readonly NormalizedTargetSnapshotRow[],
+): NormalizedTargetSnapshotRow[] {
 	if (!proposal.context) return [];
 	return rows.filter(
 		(row) =>
@@ -45,7 +44,9 @@ function adGroupMatches(proposal: SellerChangeProposal, rows: readonly Normalize
 	);
 }
 
-function uniqueAdGroupIdentity(rows: readonly NormalizedTargetSnapshotRow[]): NormalizedTargetSnapshotRow | null | "ambiguous" {
+function uniqueAdGroupIdentity(
+	rows: readonly NormalizedTargetSnapshotRow[],
+): NormalizedTargetSnapshotRow | null | "ambiguous" {
 	const usable = rows.filter((row) => nonEmpty(row.campaignId) && nonEmpty(row.adGroupId));
 	const byIdentity = new Map<string, NormalizedTargetSnapshotRow>();
 	for (const row of usable) byIdentity.set(`${row.campaignId}\u0000${row.adGroupId}`, row);
@@ -54,11 +55,15 @@ function uniqueAdGroupIdentity(rows: readonly NormalizedTargetSnapshotRow[]): No
 	return [...byIdentity.values()][0] ?? null;
 }
 
-function targetMatches(proposal: SellerChangeProposal, rows: readonly NormalizedTargetSnapshotRow[]): NormalizedTargetSnapshotRow[] {
+function targetMatches(
+	proposal: SellerChangeProposal,
+	rows: readonly NormalizedTargetSnapshotRow[],
+): NormalizedTargetSnapshotRow[] {
 	if (!proposal.context?.targeting) return [];
 	return adGroupMatches(proposal, rows).filter((row) => {
 		if (normalized(row.targeting) !== normalized(proposal.context?.targeting)) return false;
-		if (proposal.context?.matchType && normalized(row.matchType) !== normalized(proposal.context.matchType)) return false;
+		if (proposal.context?.matchType && normalized(row.matchType) !== normalized(proposal.context.matchType))
+			return false;
 		return true;
 	});
 }
@@ -147,9 +152,10 @@ function enrichTargetOperation(proposal: SellerChangeProposal, rows: readonly No
 				before,
 				after: null,
 				readiness: "blocked" as const,
-				missingInputs: match.currentBid === null
-					? ["scale mechanism", "current value", "proposed value"]
-					: ["scale mechanism", "proposed value"],
+				missingInputs:
+					match.currentBid === null
+						? ["scale mechanism", "current value", "proposed value"]
+						: ["scale mechanism", "proposed value"],
 			},
 		};
 	}
@@ -173,11 +179,12 @@ export function enrichSellerChangeSet(
 		const proposal = cloneProposal(sourceProposal);
 		if (proposal.operation === "review-profitability") return proposal;
 
-		const result = proposal.operation === "add-negative-exact"
-			? enrichNegativeExact(proposal, snapshot.rows)
-			: proposal.operation === "set-bid" || proposal.operation === "scale"
-				? enrichTargetOperation(proposal, snapshot.rows)
-				: { kind: "unresolved" as const, proposal };
+		const result =
+			proposal.operation === "add-negative-exact"
+				? enrichNegativeExact(proposal, snapshot.rows)
+				: proposal.operation === "set-bid" || proposal.operation === "scale"
+					? enrichTargetOperation(proposal, snapshot.rows)
+					: { kind: "unresolved" as const, proposal };
 
 		if (result.kind === "resolved") resolvedProposalIds.push(proposal.id);
 		if (result.kind === "unresolved") unresolvedProposalIds.push(proposal.id);

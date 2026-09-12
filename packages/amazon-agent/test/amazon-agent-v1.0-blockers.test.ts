@@ -7,11 +7,11 @@ import {
 	decideSellerChangeSet,
 	enrichSellerChangeSet,
 	normalizeTargetSnapshot,
-	verifySellerApprovalEnvelope,
 	type SellerApprovalEnvelope,
 	type SellerChangeProposal,
 	type SellerChangeSet,
 	type SellerChangeSetDecisionInput,
+	verifySellerApprovalEnvelope,
 } from "../src/index.ts";
 
 function readyBidProposal(): SellerChangeProposal {
@@ -66,7 +66,10 @@ function blockedProposal(operation: "add-negative-exact" | "set-bid"): SellerCha
 		id: `change:${operation}`,
 		operation,
 		readiness: "blocked",
-		entity: { type: "search-term", value: operation === "add-negative-exact" ? "free trail shoes" : "trail running shoes" },
+		entity: {
+			type: "search-term",
+			value: operation === "add-negative-exact" ? "free trail shoes" : "trail running shoes",
+		},
 		missingInputs:
 			operation === "add-negative-exact"
 				? ["campaign identity", "ad group identity"]
@@ -134,9 +137,9 @@ describe("Amazon V1.0 release blocker regressions", () => {
 	it("rejects a bare approved Change Set at the domain dry-run boundary", () => {
 		const secret = new TextEncoder().encode("v1-blocker-test-secret");
 		const envelope = approvedEnvelope(secret);
-		expect(() =>
-			buildSellerExecutionDryRun(envelope.changeSet as unknown as SellerApprovalEnvelope, secret),
-		).toThrow(/envelope|proof|signature/i);
+		expect(() => buildSellerExecutionDryRun(envelope.changeSet as unknown as SellerApprovalEnvelope, secret)).toThrow(
+			/envelope|proof|signature/i,
+		);
 	});
 
 	it("keeps a negative-exact proposal blocked when matched snapshot IDs are blank", () => {
@@ -179,7 +182,9 @@ describe("Amazon V1.0 release blocker regressions", () => {
 
 	it("rejects a PPC report that has headers but no data rows", () => {
 		const emptyPpc = "Campaign,Ad Group,Customer Search Term,Impressions,Clicks,Spend,Sales\n";
-		expect(() => buildPpcDiagnosisResult(emptyPpc, "empty.csv", { targetAcos: 0.3 })).toThrow(/insufficient|empty|row/i);
+		expect(() => buildPpcDiagnosisResult(emptyPpc, "empty.csv", { targetAcos: 0.3 })).toThrow(
+			/insufficient|empty|row/i,
+		);
 	});
 
 	it("rejects a profitability report that has headers but no data rows", () => {

@@ -2,11 +2,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-	buildPpcDiagnosisResult,
-	buildReportInspectionResult,
-} from "../../amazon-agent/src/index.ts";
 import { readAmazonReportFile } from "../../../.pi/extensions/amazon-seller/file-input.ts";
+import { buildPpcDiagnosisResult, buildReportInspectionResult } from "../../amazon-agent/src/index.ts";
 
 const tempDirectories: string[] = [];
 
@@ -66,7 +63,9 @@ describe("Amazon Pi tool orchestration", () => {
 	});
 
 	it("preserves parse warnings during inspection and rejects invalid numeric diagnosis", () => {
-		const report = supportedReport("Discovery,AG 1,running shoes,BROAD,trail running shoes,not-a-number,20,30,0,0,USD");
+		const report = supportedReport(
+			"Discovery,AG 1,running shoes,BROAD,trail running shoes,not-a-number,20,30,0,0,USD",
+		);
 		const inspection = buildReportInspectionResult(report, "bad.csv");
 
 		expect(inspection.inspection.warnings).toEqual([

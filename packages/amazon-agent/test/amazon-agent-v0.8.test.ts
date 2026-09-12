@@ -3,17 +3,19 @@ import {
 	applyBidPolicyToChangeSet,
 	buildSellerActionPlan,
 	buildSellerChangeSet,
-	simulateBidChange,
 	type Finding,
 	type SellerChangeSet,
+	simulateBidChange,
 } from "../src/index.ts";
 
-function enrichedBidChangeSet(overrides: {
-	currentBid?: number | null;
-	observedAcos?: number | null;
-	targetAcos?: number | null;
-	status?: SellerChangeSet["status"];
-} = {}): SellerChangeSet {
+function enrichedBidChangeSet(
+	overrides: {
+		currentBid?: number | null;
+		observedAcos?: number | null;
+		targetAcos?: number | null;
+		status?: SellerChangeSet["status"];
+	} = {},
+): SellerChangeSet {
 	const currentBid = overrides.currentBid === undefined ? 1.2 : overrides.currentBid;
 	return {
 		id: "changeset:v1:bid-down",
@@ -158,10 +160,7 @@ describe("Amazon V0.8 bid simulator", () => {
 
 	it("rejects invalid bid policy values", () => {
 		expect(() =>
-			simulateBidChange(
-				{ currentBid: 1.2, observedAcos: 0.6, targetAcos: 0.3 },
-				{ maxDecreaseFraction: 1 },
-			),
+			simulateBidChange({ currentBid: 1.2, observedAcos: 0.6, targetAcos: 0.3 }, { maxDecreaseFraction: 1 }),
 		).toThrow(/maxDecreaseFraction/);
 	});
 

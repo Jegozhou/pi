@@ -45,7 +45,9 @@ describe("Amazon V1.0 data quality hardening", () => {
 			"Campaign,Ad Group,Targeting,Match Type,Customer Search Term,Impressions,Clicks,Spend,Orders,Sales",
 			"SP Discovery,Shoes,running shoes,BROAD,trail running shoes,1000,not-a-number,30,2,50",
 		].join("\n");
-		expect(() => buildPpcDiagnosisResult(content, "bad.csv", { targetAcos: 0.3 })).toThrow(/invalid numeric|data quality/i);
+		expect(() => buildPpcDiagnosisResult(content, "bad.csv", { targetAcos: 0.3 })).toThrow(
+			/invalid numeric|data quality/i,
+		);
 	});
 
 	it("rejects PPC diagnosis when an advertising metric is negative", () => {
@@ -53,7 +55,9 @@ describe("Amazon V1.0 data quality hardening", () => {
 			"Campaign,Ad Group,Targeting,Match Type,Customer Search Term,Impressions,Clicks,Spend,Orders,Sales",
 			"SP Discovery,Shoes,running shoes,BROAD,trail running shoes,1000,-2,30,2,50",
 		].join("\n");
-		expect(() => buildPpcDiagnosisResult(content, "negative.csv", { targetAcos: 0.3 })).toThrow(/invalid numeric|negative|data quality/i);
+		expect(() => buildPpcDiagnosisResult(content, "negative.csv", { targetAcos: 0.3 })).toThrow(
+			/invalid numeric|negative|data quality/i,
+		);
 	});
 
 	it("turns a non-positive current bid into null plus a warning", () => {

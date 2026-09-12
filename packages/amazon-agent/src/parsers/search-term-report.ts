@@ -1,4 +1,3 @@
-import { parseDelimitedText } from "./delimited.ts";
 import type {
 	AdvertisingNumericField,
 	AdvertisingSemanticField,
@@ -7,6 +6,7 @@ import type {
 	ReportInspection,
 	ReportWarning,
 } from "../types/advertising.ts";
+import { parseDelimitedText } from "./delimited.ts";
 
 type ColumnMap = Partial<Record<AdvertisingSemanticField, number>>;
 
@@ -45,7 +45,10 @@ const HEADER_ALIASES: Readonly<Record<AdvertisingSemanticField, readonly string[
 };
 
 function canonicalizeHeader(value: string): string {
-	return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+	return value
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9]/g, "");
 }
 
 function detectDelimiter(content: string): ReportDelimiter {
@@ -154,10 +157,7 @@ export function inspectAdvertisingReport(options: { content: string; fileName: s
 	};
 }
 
-export function normalizeSearchTermReport(options: {
-	content: string;
-	fileName: string;
-}): NormalizedAdvertisingRow[] {
+export function normalizeSearchTermReport(options: { content: string; fileName: string }): NormalizedAdvertisingRow[] {
 	const parsed = parseReport(options.content);
 	if (parsed.missingFields.length > 0) {
 		throw new Error(`Search term report is missing required fields: ${parsed.missingFields.join(", ")}`);

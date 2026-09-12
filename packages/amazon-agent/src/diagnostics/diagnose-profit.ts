@@ -1,9 +1,5 @@
 import { calculateProfitabilityMetrics } from "../metrics/profitability.ts";
-import type {
-	NormalizedProfitabilityRow,
-	ProfitabilityFinding,
-	ProfitabilityMetrics,
-} from "../types/profitability.ts";
+import type { NormalizedProfitabilityRow, ProfitabilityFinding, ProfitabilityMetrics } from "../types/profitability.ts";
 
 export interface ProfitabilityPolicy {
 	requiredContributionMargin: number | null;
