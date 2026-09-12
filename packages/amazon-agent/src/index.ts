@@ -91,6 +91,57 @@ export type {
 	SellerExecutionMode,
 	SellerNegativeExactDryRunOperation,
 } from "./execution/types.ts";
+export type {
+	SellerAmazonAdsAccountScope,
+	SellerAmazonAdsRegion,
+} from "./live-execution/account-scope.ts";
+export {
+	assertSellerAmazonAdsAccountScope,
+	sellerAmazonAdsAccountScopeKey,
+} from "./live-execution/account-scope.ts";
+export type {
+	SellerExecutionAuthorization,
+	SellerExecutionAuthorizationCreateOptions,
+	SellerExecutionAuthorizationEnvelope,
+	SellerExecutionAuthorizationProof,
+	SellerExecutionAuthorizationSecret,
+	SellerExecutionAuthorizationVerifyOptions,
+} from "./live-execution/authorization.ts";
+export {
+	createSellerExecutionAuthorizationEnvelope,
+	verifySellerExecutionAuthorizationEnvelope,
+} from "./live-execution/authorization.ts";
+export type {
+	SellerLiveExecutionPreflight,
+	SellerLiveExecutionPreflightOptions,
+	SellerLiveExecutionPreflightStatus,
+} from "./live-execution/build-live-preflight.ts";
+export { buildSellerLiveExecutionPreflight } from "./live-execution/build-live-preflight.ts";
+export type {
+	SellerExecutionIdempotencyReservation,
+	SellerExecutionIdempotencyReservationResult,
+	SellerExecutionIdempotencyStore,
+	SellerExecutionReservation,
+} from "./live-execution/idempotency-store.ts";
+export {
+	assertSellerExecutionIdempotencyReservation,
+	sellerExecutionIdempotencyStorageKey,
+} from "./live-execution/idempotency-store.ts";
+export { createInMemorySellerExecutionIdempotencyStore } from "./live-execution/in-memory-idempotency-store.ts";
+export type {
+	SellerExecutionStatePreflight,
+	SellerExecutionStatePreflightStatus,
+	SellerLiveOperationObservedState,
+	SellerLiveOperationPreflight,
+	SellerLiveOperationPreflightStatus,
+} from "./live-execution/preflight.ts";
+export { preflightSellerExecutionState } from "./live-execution/preflight.ts";
+export type {
+	SellerExecutionStateReader,
+	SellerTrustedBidState,
+	SellerTrustedNegativeExactState,
+	SellerTrustedOperationState,
+} from "./live-execution/state-reader.ts";
 export { calculateAdvertisingMetrics, safeRatio } from "./metrics/advertising.ts";
 export { calculateProfitabilityMetrics } from "./metrics/profitability.ts";
 export { DelimitedTextError, parseDelimitedText } from "./parsers/delimited.ts";
