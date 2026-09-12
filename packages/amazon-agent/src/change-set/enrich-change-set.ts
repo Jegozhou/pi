@@ -55,15 +55,16 @@ function uniqueAdGroupIdentity(
 	return [...byIdentity.values()][0] ?? null;
 }
 
-function targetMatches(
+function exactTargetContextMatches(
 	proposal: SellerChangeProposal,
 	rows: readonly NormalizedTargetSnapshotRow[],
-): NormalizedTargetSnapshotRow[] {
+): ResolvableTargetSnapshotRow[] {
 	if (!proposal.context?.targeting) return [];
-	return adGroupMatches(proposal, rows).filter((row) => {
+	return rows.filter(isResolvableTargetRow).filter((row) => {
 		if (normalized(row.targeting) !== normalized(proposal.context?.targeting)) return false;
-		if (proposal.context?.matchType && normalized(row.matchType) !== normalized(proposal.context.matchType))
+		if (proposal.context?.matchType && normalized(row.matchType) !== normalized(proposal.context.matchType)) {
 			return false;
+		}
 		return true;
 	});
 }
@@ -79,10 +80,9 @@ function targetStateKey(row: NormalizedTargetSnapshotRow): string {
 	].join("\u0000");
 }
 
-function uniqueTarget(rows: readonly NormalizedTargetSnapshotRow[]): NormalizedTargetSnapshotRow | null | "ambiguous" {
-	const usable = rows.filter(isResolvableTargetRow);
+function uniqueTarget(rows: readonly ResolvableTargetSnapshotRow[]): ResolvableTargetSnapshotRow | null | "ambiguous" {
 	const byTarget = new Map<string, ResolvableTargetSnapshotRow[]>();
-	for (const row of usable) {
+	for (const row of rows) {
 		const group = byTarget.get(row.targetId) ?? [];
 		group.push(row);
 		byTarget.set(row.targetId, group);
@@ -93,6 +93,18 @@ function uniqueTarget(rows: readonly NormalizedTargetSnapshotRow[]): NormalizedT
 	const states = new Set(group.map(targetStateKey));
 	if (states.size !== 1) return "ambiguous";
 	return group[0] ?? null;
+}
+
+function resolveTarget(
+	proposal: SellerChangeProposal,
+	rows: readonly NormalizedTargetSnapshotRow[],
+): ResolvableTargetSnapshotRow | null | "ambiguous" {
+	const scopeRows = adGroupMatches(proposal, rows).filter(isResolvableTargetRow);
+	const contextMatch = uniqueTarget(exactTargetContextMatches(proposal, scopeRows));
+	if (contextMatch === "ambiguous" || contextMatch === null) return contextMatch;
+
+	const sameTargetRows = scopeRows.filter((row) => row.targetId === contextMatch.targetId);
+	return uniqueTarget(sameTargetRows);
 }
 
 function enrichNegativeExact(proposal: SellerChangeProposal, rows: readonly NormalizedTargetSnapshotRow[]) {
@@ -120,7 +132,7 @@ function enrichNegativeExact(proposal: SellerChangeProposal, rows: readonly Norm
 }
 
 function enrichTargetOperation(proposal: SellerChangeProposal, rows: readonly NormalizedTargetSnapshotRow[]) {
-	const match = uniqueTarget(targetMatches(proposal, rows));
+	const match = resolveTarget(proposal, rows);
 	if (match === "ambiguous") return { kind: "ambiguous" as const, proposal };
 	if (!match) return { kind: "unresolved" as const, proposal };
 
