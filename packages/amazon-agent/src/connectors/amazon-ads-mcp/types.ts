@@ -18,6 +18,7 @@ export interface SellerAmazonAdsMcpNormalizedSession {
 export interface SellerAmazonAdsMcpToolAnnotations {
 	readOnlyHint?: boolean;
 	destructiveHint?: boolean;
+	[key: string]: unknown;
 }
 
 export interface SellerAmazonAdsMcpToolDescriptor {
@@ -25,6 +26,7 @@ export interface SellerAmazonAdsMcpToolDescriptor {
 	description?: string;
 	inputSchema?: unknown;
 	annotations?: SellerAmazonAdsMcpToolAnnotations;
+	[key: string]: unknown;
 }
 
 export type SellerAmazonAdsMcpCapabilityClassification = "read-candidate" | "mutation-candidate" | "unknown";
