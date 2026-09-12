@@ -68,6 +68,9 @@ export function buildPpcDiagnosisResult(
 
 	const policy: PpcPolicy = { ...DEFAULT_PPC_POLICY, ...policyOverrides };
 	const rows = normalizeSearchTermReport({ content, fileName });
+	if (rows.length === 0) {
+		throw new Error("Insufficient PPC data: report contains no data rows");
+	}
 	const findings = diagnosePpc(rows, policy);
 	const byCategory: Record<FindingCategory, number> = {
 		waste: 0,
@@ -97,6 +100,9 @@ export function buildProfitDiagnosisResult(
 		throw new Error(
 			`Unsupported profitability input; missing required fields: ${parsed.inspection.missingFields.join(", ")}`,
 		);
+	}
+	if (parsed.rows.length === 0) {
+		throw new Error("Insufficient profitability data: report contains no data rows");
 	}
 	const policy: ProfitabilityPolicy = {
 		requiredContributionMargin: policyOverrides.requiredContributionMargin ?? null,
