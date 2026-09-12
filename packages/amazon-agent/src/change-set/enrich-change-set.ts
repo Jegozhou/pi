@@ -9,6 +9,10 @@ function normalized(value: string | null | undefined): string {
 	return (value ?? "").trim().toLowerCase();
 }
 
+function nonEmpty(value: string | null | undefined): value is string {
+	return typeof value === "string" && value.trim().length > 0;
+}
+
 function cloneProposal(proposal: SellerChangeProposal): SellerChangeProposal {
 	return {
 		...proposal,
@@ -32,8 +36,9 @@ function adGroupMatches(proposal: SellerChangeProposal, rows: readonly Normalize
 }
 
 function uniqueAdGroupIdentity(rows: readonly NormalizedTargetSnapshotRow[]): NormalizedTargetSnapshotRow | null | "ambiguous" {
+	const usable = rows.filter((row) => nonEmpty(row.campaignId) && nonEmpty(row.adGroupId));
 	const byIdentity = new Map<string, NormalizedTargetSnapshotRow>();
-	for (const row of rows) byIdentity.set(`${row.campaignId}\u0000${row.adGroupId}`, row);
+	for (const row of usable) byIdentity.set(`${row.campaignId}\u0000${row.adGroupId}`, row);
 	if (byIdentity.size === 0) return null;
 	if (byIdentity.size > 1) return "ambiguous";
 	return [...byIdentity.values()][0] ?? null;
@@ -48,13 +53,33 @@ function targetMatches(proposal: SellerChangeProposal, rows: readonly Normalized
 	});
 }
 
+function targetStateKey(row: NormalizedTargetSnapshotRow): string {
+	return [
+		row.campaignId,
+		row.adGroupId,
+		normalized(row.targeting),
+		normalized(row.matchType),
+		row.currentBid === null ? "null" : String(row.currentBid),
+		normalized(row.state),
+	].join("\u0000");
+}
+
 function uniqueTarget(rows: readonly NormalizedTargetSnapshotRow[]): NormalizedTargetSnapshotRow | null | "ambiguous" {
-	const usable = rows.filter((row) => row.targetId !== null);
-	const byTarget = new Map<string, NormalizedTargetSnapshotRow>();
-	for (const row of usable) byTarget.set(row.targetId as string, row);
+	const usable = rows.filter(
+		(row) => nonEmpty(row.campaignId) && nonEmpty(row.adGroupId) && nonEmpty(row.targetId),
+	);
+	const byTarget = new Map<string, NormalizedTargetSnapshotRow[]>();
+	for (const row of usable) {
+		const group = byTarget.get(row.targetId) ?? [];
+		group.push(row);
+		byTarget.set(row.targetId, group);
+	}
 	if (byTarget.size === 0) return null;
 	if (byTarget.size > 1) return "ambiguous";
-	return [...byTarget.values()][0] ?? null;
+	const group = [...byTarget.values()][0] ?? [];
+	const states = new Set(group.map(targetStateKey));
+	if (states.size !== 1) return "ambiguous";
+	return group[0] ?? null;
 }
 
 function enrichNegativeExact(proposal: SellerChangeProposal, rows: readonly NormalizedTargetSnapshotRow[]) {
