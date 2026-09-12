@@ -1,6 +1,6 @@
 # Amazon Seller Agent
 
-A file-first Amazon seller decision engine built on Pi. It turns supported seller reports into deterministic metrics, evidence-backed findings, ranked actions, auditable Change Sets, explicit human approval, and zero-write execution dry runs.
+A file-first Amazon seller decision engine built on Pi. It turns supported seller reports into deterministic metrics, evidence-backed findings, ranked actions, auditable Change Sets, host-confirmed human approval, and zero-write execution dry runs.
 
 This package is intentionally not an Amazon-themed chatbot. Numerical facts and state transitions are produced by deterministic TypeScript; the LLM chooses tools, interprets results, asks for missing seller inputs, and explains decisions.
 
@@ -11,22 +11,25 @@ V1.0 supports two core workflows:
 - Sponsored Products PPC diagnosis from Search Term reports.
 - ASIN/SKU known-contribution profitability diagnosis from seller-provided cost data.
 
-The pipeline can also resolve local Amazon Ads target identity from a supplied target snapshot, simulate guarded bid reductions, prepare Change Sets, record explicit approval/rejection, and build an execution dry run.
+The pipeline can also resolve local Amazon Ads target identity from a supplied target snapshot, simulate guarded bid reductions, prepare Change Sets, request host-confirmed approval/rejection, and build an execution dry run from a signed approval envelope.
 
-V1.0 does **not** connect to Amazon Ads or Seller Central, store credentials, or write account changes. `approved` means approved for a future executor. `dry-run` means no write occurred.
+V1.0 does **not** connect to Amazon Ads or Seller Central, store Amazon credentials, or write account changes. `approved` means the host UI recorded a human decision for an exact sealed Change Set. `dry-run` means no write occurred.
 
 ## Core pipeline
 
 ```text
 seller request
 → report inspection / parsing
+→ deterministic data-quality validation
 → deterministic metrics
 → deterministic diagnostic rules
 → ranked Action Plan
 → Change Set
 → target identity enrichment
 → deterministic bid policy where applicable
-→ human approval
+→ awaiting approval
+→ host UI human confirmation
+→ signed approval envelope
 → execution Dry Run
 ```
 
@@ -36,13 +39,19 @@ seller request
 
 Required semantic fields include campaign name, ad group name, customer search term, impressions, clicks, spend, and attributed sales. Orders, targeting, match type, currency, and related fields improve diagnosis.
 
+Header-only reports are insufficient. Malformed numeric values, negative advertising metrics, and blank required numeric values stop PPC diagnosis rather than silently becoming business facts.
+
 ### Profitability input
 
 At minimum provide ASIN or SKU plus gross sales. Stronger profitability claims require units, refunds, Amazon fees, fulfillment/storage fees, advertising spend, COGS/unit, and other variable costs. Missing costs remain explicit; partial data is never called net profit.
 
+A header-only profitability report is insufficient and invalid numeric values stop diagnosis.
+
 ### Target snapshot
 
-For account-object resolution provide campaign name + ID and ad group name + ID. Targeting, match type, target ID, current bid, and state enable target-level bid preparation.
+For account-object resolution provide non-empty campaign name + ID and ad group name + ID. Targeting, match type, target ID, positive current bid, and state enable target-level bid preparation.
+
+Blank IDs are never considered valid identity. If duplicate rows for one target ID disagree on scope, targeting, match type, bid, or state, resolution fails ambiguous instead of choosing the last row.
 
 CSV and TSV are the current first-class file formats. XLSX is not part of the verified V1.0 release candidate yet.
 
@@ -84,7 +93,26 @@ raw bid:       $0.60
 proposal:      $1.20 → $0.96
 ```
 
-The proposal still requires explicit human approval.
+The proposal still requires host-confirmed human approval.
+
+## Approval integrity
+
+`amazon_request_change_set_approval` only moves a complete draft to `awaiting-approval`.
+
+`amazon_decide_change_set` is model-callable only as a request to open the Pi host confirmation dialog. The tool itself requires a dialog-capable host. The human sees the exact Change Set ID/version and each proposal's before/after state and must click confirm before an approval or rejection is recorded.
+
+A conversational “approve” and the model-provided `actor` label are not approval proof.
+
+For an approval, the system:
+
+1. records host UI provenance and a host-generated timestamp;
+2. computes a canonical SHA-256 digest over the exact approved Change Set content;
+3. signs the approval with an ephemeral per-extension HMAC key;
+4. returns a signed approval envelope.
+
+`amazon_build_execution_dry_run` accepts that signed envelope, not a bare approved Change Set. Any post-approval edit to proposal scope, target IDs, before/after values, decision content, digest, or signature fails verification.
+
+The signing key is intentionally ephemeral. An extension reload/process restart requires fresh human approval rather than replaying an unverifiable old envelope.
 
 ## LLM responsibility
 
@@ -94,19 +122,20 @@ The LLM may:
 - choose and sequence Amazon tools;
 - explain structured findings and evidence;
 - ask for missing seller targets/costs;
-- present the approval decision to the user.
+- request that the host display the exact approval confirmation dialog.
 
 The LLM is not authoritative for:
 
 - ACOS/ROAS/CTR/CVR/CPC arithmetic;
 - contribution-profit calculations;
+- data-quality acceptance;
 - rule firing;
 - target ID resolution;
 - bid-policy math;
-- approval state transitions;
+- approval proof;
 - Amazon account execution.
 
-Those responsibilities stay in deterministic code.
+Those responsibilities stay in deterministic code and the trusted host boundary.
 
 ## Evaluation fixtures
 
@@ -118,16 +147,16 @@ Synthetic V1.0 fixtures live under `test/fixtures/v1.0/`. The acceptance scenari
 - negative known contribution profit;
 - target identity resolution;
 - `$1.20 → $0.96` guarded bid proposal;
-- explicit approval;
+- explicit approval state transition;
 - two-operation zero-write dry run.
 
-The release-gate test is `test/amazon-agent-v1.0.test.ts`.
+Additional V1.0 regression suites cover release blockers and data-quality hardening, including approved-content tampering, blank identifiers, conflicting target snapshots, empty reports, invalid/negative numeric data, non-positive bids, missing scale target context, and Change Set ID collisions.
 
 ## Safety contract
 
 Every mutation proposal preserves `humanApprovalRequired: true`.
 
-The system fails closed when identifiers, current values, targets, or before/after states are missing or ambiguous. It must never claim an Amazon change was executed unless a future real executor returns and records that result.
+The system fails closed when identifiers, current values, targets, before/after states, report data, or approval proof are missing, invalid, ambiguous, stale, or modified. It must never claim an Amazon change was executed unless a future real executor returns and records that result.
 
 ## Current release limitations
 
