@@ -91,6 +91,26 @@ export type {
 	SellerExecutionMode,
 	SellerNegativeExactDryRunOperation,
 } from "./execution/types.ts";
+export {
+	assertSellerAmazonAdsAccountScope,
+	sellerAmazonAdsAccountScopeKey,
+} from "./live-execution/account-scope.ts";
+export type {
+	SellerAmazonAdsAccountScope,
+	SellerAmazonAdsRegion,
+} from "./live-execution/account-scope.ts";
+export {
+	createSellerExecutionAuthorizationEnvelope,
+	verifySellerExecutionAuthorizationEnvelope,
+} from "./live-execution/authorization.ts";
+export type {
+	SellerExecutionAuthorization,
+	SellerExecutionAuthorizationCreateOptions,
+	SellerExecutionAuthorizationEnvelope,
+	SellerExecutionAuthorizationProof,
+	SellerExecutionAuthorizationSecret,
+	SellerExecutionAuthorizationVerifyOptions,
+} from "./live-execution/authorization.ts";
 export { calculateAdvertisingMetrics, safeRatio } from "./metrics/advertising.ts";
 export { calculateProfitabilityMetrics } from "./metrics/profitability.ts";
 export { DelimitedTextError, parseDelimitedText } from "./parsers/delimited.ts";
