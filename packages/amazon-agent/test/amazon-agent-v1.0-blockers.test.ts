@@ -3,9 +3,11 @@ import {
 	buildPpcDiagnosisResult,
 	buildProfitDiagnosisResult,
 	buildSellerExecutionDryRun,
+	createSellerApprovalEnvelope,
 	decideSellerChangeSet,
 	enrichSellerChangeSet,
 	normalizeTargetSnapshot,
+	verifySellerApprovalEnvelope,
 	type SellerChangeProposal,
 	type SellerChangeSet,
 } from "../src/index.ts";
@@ -88,6 +90,25 @@ describe("Amazon V1.0 release blocker regressions", () => {
 		expect(() => buildSellerExecutionDryRun(tampered, { expectedVersion: tampered.version })).toThrow(
 			/content|digest|tamper/i,
 		);
+	});
+
+	it("binds an approval proof to the exact approved Change Set content", () => {
+		const secret = new TextEncoder().encode("v1-blocker-test-secret");
+		const approved = decideSellerChangeSet(awaitingBidChangeSet(), {
+			decision: "approve",
+			actor: "seller-owner",
+			decidedAt: "2026-09-13T00:00:00.000Z",
+			provenance: "host-ui-confirmation",
+		});
+		const envelope = createSellerApprovalEnvelope(approved, secret);
+		expect(verifySellerApprovalEnvelope(envelope, secret).id).toBe(approved.id);
+
+		const tampered = structuredClone(envelope);
+		tampered.changeSet.proposals[0].after = {
+			...(tampered.changeSet.proposals[0].after ?? {}),
+			proposedBid: 0.5,
+		};
+		expect(() => verifySellerApprovalEnvelope(tampered, secret)).toThrow(/signature|digest|tamper/i);
 	});
 
 	it("keeps a negative-exact proposal blocked when matched snapshot IDs are blank", () => {
