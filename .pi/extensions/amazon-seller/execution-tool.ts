@@ -2,7 +2,6 @@ import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
 	buildSellerExecutionDryRun,
-	verifySellerApprovalEnvelope,
 	type SellerApprovalEnvelope,
 	type SellerApprovalSecret,
 	type SellerChangeSet,
@@ -55,8 +54,7 @@ function createExecutionDryRunTool(approvalSecret: SellerApprovalSecret) {
 		}),
 		async execute(_toolCallId, params) {
 			const envelope = parseApprovalEnvelope(params.approvalEnvelopeJson);
-			const changeSet = verifySellerApprovalEnvelope(envelope, approvalSecret);
-			const result = buildSellerExecutionDryRun(changeSet, {
+			const result = buildSellerExecutionDryRun(envelope, approvalSecret, {
 				...(params.expectedVersion !== undefined ? { expectedVersion: params.expectedVersion } : {}),
 			});
 			return {
