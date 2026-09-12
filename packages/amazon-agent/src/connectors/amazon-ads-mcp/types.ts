@@ -15,10 +15,29 @@ export interface SellerAmazonAdsMcpNormalizedSession {
 	provenance: "amazon-ads-mcp-host";
 }
 
+export interface SellerAmazonAdsMcpToolAnnotations {
+	readOnlyHint?: boolean;
+	destructiveHint?: boolean;
+}
+
 export interface SellerAmazonAdsMcpToolDescriptor {
 	name: string;
 	description?: string;
 	inputSchema?: unknown;
+	annotations?: SellerAmazonAdsMcpToolAnnotations;
+}
+
+export type SellerAmazonAdsMcpCapabilityClassification = "read-candidate" | "mutation-candidate" | "unknown";
+
+export interface SellerAmazonAdsMcpCapability {
+	name: string;
+	classification: SellerAmazonAdsMcpCapabilityClassification;
+	descriptorDigest: string;
+	descriptor: SellerAmazonAdsMcpToolDescriptor;
+}
+
+export interface SellerAmazonAdsMcpCapabilityInventory {
+	capabilities: SellerAmazonAdsMcpCapability[];
 }
 
 export interface SellerAmazonAdsMcpReadRequest {
