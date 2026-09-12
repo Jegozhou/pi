@@ -14,6 +14,13 @@ export type {
 export { calculateAdvertisingMetrics, safeRatio } from "./metrics/advertising.ts";
 export { DelimitedTextError, parseDelimitedText } from "./parsers/delimited.ts";
 export { inspectAdvertisingReport, normalizeSearchTermReport } from "./parsers/search-term-report.ts";
+export {
+	buildPpcDiagnosisResult,
+	buildReportInspectionResult,
+	type PpcDiagnosisResult,
+	type PpcPolicyOverrides,
+	type ReportInspectionResult,
+} from "./tools/report-tools.ts";
 export type {
 	AdvertisingMetrics,
 	AdvertisingNumericField,
