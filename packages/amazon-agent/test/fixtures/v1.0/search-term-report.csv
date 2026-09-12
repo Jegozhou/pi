@@ -1,0 +1,4 @@
+Campaign Name,Ad Group Name,Targeting,Match Type,Customer Search Term,Impressions,Clicks,Spend,Orders,Sales,Currency
+SP Discovery,Shoes,running shoes,BROAD,trail running shoes,1000,20,30,2,50,USD
+SP Discovery,Shoes,running shoes,BROAD,free trail shoes,800,15,25,0,0,USD
+SP Discovery,Shoes,trail shoes,PHRASE,waterproof trail shoes,1200,40,20,4,100,USD

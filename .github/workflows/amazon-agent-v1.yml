@@ -1,0 +1,59 @@
+name: Amazon Seller Agent V1
+
+on:
+  push:
+    branches:
+      - feat/amazon-seller-agent
+    paths:
+      - ".github/workflows/amazon-agent-v1.yml"
+      - ".pi/extensions/amazon-seller/**"
+      - ".pi/skills/amazon-seller-agent.md"
+      - "packages/amazon-agent/**"
+      - "docs/amazon-seller-agent-v1.0-*.md"
+  pull_request:
+    paths:
+      - ".github/workflows/amazon-agent-v1.yml"
+      - ".pi/extensions/amazon-seller/**"
+      - ".pi/skills/amazon-seller-agent.md"
+      - "packages/amazon-agent/**"
+      - "docs/amazon-seller-agent-v1.0-*.md"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.19.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Hydrate Pi model data for extension host tests
+        run: npm --prefix packages/ai run hydrate-model-data
+
+      - name: Assert host-test model manifest exists
+        run: test -f packages/ai/src/providers/data/.manifest.json
+
+      - name: Check Amazon Agent formatting
+        run: npx biome check --error-on-warnings .pi/extensions/amazon-seller packages/amazon-agent/src packages/amazon-agent/test
+
+      - name: Run Amazon Agent tests
+        run: npm --prefix packages/amazon-agent test
+
+      - name: Build Amazon Agent package
+        run: npm --prefix packages/amazon-agent run build
+
+      - name: Check patch whitespace
+        run: git diff --check origin/main...HEAD

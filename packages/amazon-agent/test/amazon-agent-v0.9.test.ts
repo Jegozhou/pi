@@ -1,0 +1,215 @@
+import { describe, expect, it } from "vitest";
+import {
+	buildSellerExecutionDryRun,
+	computeSellerChangeSetContentDigest,
+	createSellerApprovalEnvelope,
+	type SellerChangeProposal,
+	type SellerChangeSet,
+} from "../src/index.ts";
+
+const TEST_SECRET = new TextEncoder().encode("v0.9-test-secret");
+
+function bidProposal(overrides: Partial<SellerChangeProposal> = {}): SellerChangeProposal {
+	return {
+		id: "change:bid-down",
+		sourceActionItemId: "action:bid-down",
+		sourceFindingId: "finding:bid-down",
+		sourceRuleId: "ppc.high-acos.v1",
+		operation: "set-bid",
+		readiness: "ready",
+		entity: { type: "search-term", value: "trail running shoes" },
+		context: {
+			campaignName: "SP Discovery",
+			adGroupName: "Shoes",
+			targeting: "running shoes",
+			matchType: "BROAD",
+		},
+		decisionContext: { observedAcos: 0.6, targetAcos: 0.3 },
+		rationale: "Observed ACOS is above target.",
+		evidence: [{ sourceFile: "search-term.csv", sourceRow: 2 }],
+		missingInputs: [],
+		before: {
+			campaignId: "1001",
+			adGroupId: "2001",
+			targetId: "3001",
+			currentBid: 1.2,
+		},
+		after: {
+			campaignId: "1001",
+			adGroupId: "2001",
+			targetId: "3001",
+			proposedBid: 0.96,
+		},
+		humanApprovalRequired: true,
+		...overrides,
+	};
+}
+
+function negativeProposal(overrides: Partial<SellerChangeProposal> = {}): SellerChangeProposal {
+	return {
+		id: "change:negative",
+		sourceActionItemId: "action:negative",
+		sourceFindingId: "finding:negative",
+		sourceRuleId: "ppc.waste-without-sales.v1",
+		operation: "add-negative-exact",
+		readiness: "ready",
+		entity: { type: "search-term", value: "free trail shoes" },
+		rationale: "Spend accumulated without attributed sales.",
+		evidence: [{ sourceFile: "search-term.csv", sourceRow: 3 }],
+		missingInputs: [],
+		before: {
+			campaignId: "1001",
+			adGroupId: "2001",
+			searchTerm: "free trail shoes",
+		},
+		after: {
+			campaignId: "1001",
+			adGroupId: "2001",
+			negativeExact: "free trail shoes",
+		},
+		humanApprovalRequired: true,
+		...overrides,
+	};
+}
+
+function approvedChangeSet(overrides: Partial<SellerChangeSet> = {}): SellerChangeSet {
+	const result: SellerChangeSet = {
+		id: "changeset:v1:approved",
+		version: 4,
+		status: "approved",
+		sourceActionItemIds: ["action:bid-down"],
+		proposals: [bidProposal()],
+		decision: {
+			outcome: "approved",
+			actor: "seller-owner",
+			decidedAt: "2026-09-13T00:00:00.000Z",
+			provenance: "host-ui-confirmation",
+		},
+		...overrides,
+	};
+	if (result.status === "approved" && result.decision?.outcome === "approved") {
+		result.decision.contentDigest = computeSellerChangeSetContentDigest(result);
+	}
+	return result;
+}
+
+function dryRun(overrides: Partial<SellerChangeSet> = {}, expectedVersion?: number) {
+	const envelope = createSellerApprovalEnvelope(approvedChangeSet(overrides), TEST_SECRET);
+	return buildSellerExecutionDryRun(envelope, TEST_SECRET, {
+		...(expectedVersion !== undefined ? { expectedVersion } : {}),
+	});
+}
+
+describe("Amazon V0.9 execution dry run", () => {
+	it("builds a dry-run set-bid operation from a signed approved Change Set", () => {
+		const result = dryRun({}, 4);
+		expect(result).toMatchObject({
+			mode: "dry-run",
+			sourceChangeSetId: "changeset:v1:approved",
+			sourceChangeSetVersion: 4,
+			approvedBy: "seller-owner",
+			approvedAt: "2026-09-13T00:00:00.000Z",
+			writesPerformed: false,
+		});
+		expect(result.operations[0]).toMatchObject({
+			proposalId: "change:bid-down",
+			operation: "set-bid",
+			targetId: "3001",
+			before: { bid: 1.2 },
+			after: { bid: 0.96 },
+		});
+	});
+
+	it("builds a dry-run add-negative-exact operation", () => {
+		const result = dryRun({ sourceActionItemIds: ["action:negative"], proposals: [negativeProposal()] });
+		expect(result.operations[0]).toMatchObject({
+			proposalId: "change:negative",
+			operation: "add-negative-exact",
+			campaignId: "1001",
+			adGroupId: "2001",
+			negativeExact: "free trail shoes",
+		});
+	});
+
+	it.each(["draft", "awaiting-approval", "rejected"] as const)("rejects %s Change Sets before signing", (status) => {
+		const changeSet = approvedChangeSet({
+			status,
+			decision:
+				status === "rejected"
+					? {
+							outcome: "rejected",
+							actor: "seller-owner",
+							decidedAt: "2026-09-13T00:00:00.000Z",
+							provenance: "host-ui-confirmation",
+						}
+					: null,
+		});
+		expect(() => createSellerApprovalEnvelope(changeSet, TEST_SECRET)).toThrow(/approved/i);
+	});
+
+	it("rejects approved status without an approved decision", () => {
+		expect(() => createSellerApprovalEnvelope(approvedChangeSet({ decision: null }), TEST_SECRET)).toThrow(
+			/approved|decision/i,
+		);
+	});
+
+	it("rejects a stale expected version", () => {
+		expect(() => dryRun({}, 3)).toThrow(/version/i);
+	});
+
+	it("rejects any blocked mutating proposal instead of silently skipping it", () => {
+		const blocked = bidProposal({ readiness: "blocked", missingInputs: ["proposed bid"], after: null });
+		expect(() => dryRun({ proposals: [blocked] })).toThrow(/blocked/i);
+	});
+
+	it("rejects incomplete bid before/after data", () => {
+		const incomplete = bidProposal({ after: { targetId: "3001" } });
+		expect(() => dryRun({ proposals: [incomplete] })).toThrow(/proposed bid/i);
+	});
+
+	it("rejects unsupported ready mutations instead of ignoring them", () => {
+		const unsupported = bidProposal({ operation: "scale" });
+		expect(() => dryRun({ proposals: [unsupported] })).toThrow(/unsupported/i);
+	});
+
+	it("skips review-only analytical proposals but records their ids", () => {
+		const reviewOnly: SellerChangeProposal = {
+			...bidProposal(),
+			id: "change:profit-review",
+			operation: "review-profitability",
+			readiness: "review-only",
+			entity: { type: "asin", value: "B000TEST" },
+			before: null,
+			after: null,
+			missingInputs: [],
+		};
+		const result = dryRun({ proposals: [bidProposal(), reviewOnly] });
+		expect(result.operations).toHaveLength(1);
+		expect(result.skippedReviewOnlyProposalIds).toEqual(["change:profit-review"]);
+	});
+
+	it("preserves proposal order for auditability", () => {
+		const result = dryRun({
+			sourceActionItemIds: ["action:negative", "action:bid-down"],
+			proposals: [negativeProposal(), bidProposal()],
+		});
+		expect(result.operations.map((operation) => operation.proposalId)).toEqual([
+			"change:negative",
+			"change:bid-down",
+		]);
+	});
+
+	it("does not mutate the signed approval envelope", () => {
+		const envelope = createSellerApprovalEnvelope(approvedChangeSet(), TEST_SECRET);
+		const before = JSON.stringify(envelope);
+		buildSellerExecutionDryRun(envelope, TEST_SECRET);
+		expect(JSON.stringify(envelope)).toBe(before);
+	});
+
+	it("never reports execution success or writes", () => {
+		const result = dryRun();
+		expect(result.writesPerformed).toBe(false);
+		const keys = JSON.stringify(result).toLowerCase();
+		expect(keys).not.toMatch(/"executed"|"applied"|"success"/);
+	});
+});
