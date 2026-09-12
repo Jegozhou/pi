@@ -1,3 +1,12 @@
+export { buildSellerActionPlan } from "./action-plan/build-action-plan.ts";
+export type {
+	SellerActionDataQuality,
+	SellerActionPlan,
+	SellerActionPlanInput,
+	SellerActionPlanItem,
+	SellerActionSource,
+	SellerActionStage,
+} from "./action-plan/types.ts";
 export { diagnosePpc } from "./diagnostics/diagnose-ppc.ts";
 export {
 	diagnoseProfitability,

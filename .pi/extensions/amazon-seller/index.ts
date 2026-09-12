@@ -4,6 +4,7 @@ import {
 	buildPpcDiagnosisResult,
 	buildProfitDiagnosisResult,
 	buildReportInspectionResult,
+	buildSellerActionPlan,
 	type PpcPolicyOverrides,
 } from "../../../packages/amazon-agent/src/index.ts";
 import { readAmazonReportFile } from "./file-input.ts";
@@ -81,8 +82,82 @@ const diagnoseProfitTool = defineTool({
 	},
 });
 
+const buildActionPlanTool = defineTool({
+	name: "amazon_build_action_plan",
+	label: "Build Amazon Seller Action Plan",
+	description:
+		"Read one or both explicitly selected local Amazon PPC and profitability reports, run deterministic diagnostics, and return one ranked action plan. Read-only; never executes changes and every candidate keeps human approval required.",
+	parameters: Type.Object({
+		ppcFilePath: Type.Optional(Type.String({ description: "Optional path to a Sponsored Products Search Term CSV or TSV report" })),
+		profitabilityFilePath: Type.Optional(Type.String({ description: "Optional path to an ASIN/SKU profitability CSV or TSV input" })),
+		targetAcos: Type.Optional(Type.Number({ description: "Optional seller target ACOS as a fraction, for example 0.30" })),
+		requiredContributionMargin: Type.Optional(
+			Type.Number({ description: "Optional seller-required contribution margin as a fraction, for example 0.20" }),
+		),
+		limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100, description: "Maximum ranked actions to return" })),
+	}),
+	async execute(_toolCallId, params, signal) {
+		if (!params.ppcFilePath && !params.profitabilityFilePath) {
+			throw new Error("Provide ppcFilePath, profitabilityFilePath, or both");
+		}
+
+		let ppcResult: ReturnType<typeof buildPpcDiagnosisResult> | null = null;
+		let profitabilityResult: ReturnType<typeof buildProfitDiagnosisResult> | null = null;
+		const files: Record<string, { fileName: string; sizeBytes: number }> = {};
+
+		if (params.ppcFilePath) {
+			const file = await readAmazonReportFile(params.ppcFilePath, signal);
+			const overrides: PpcPolicyOverrides = {};
+			if (params.targetAcos !== undefined) overrides.targetAcos = params.targetAcos;
+			ppcResult = buildPpcDiagnosisResult(file.content, file.fileName, overrides);
+			files.ppc = { fileName: file.fileName, sizeBytes: file.sizeBytes };
+		}
+
+		if (params.profitabilityFilePath) {
+			const file = await readAmazonReportFile(params.profitabilityFilePath, signal);
+			profitabilityResult = buildProfitDiagnosisResult(file.content, file.fileName, {
+				requiredContributionMargin: params.requiredContributionMargin,
+			});
+			files.profitability = { fileName: file.fileName, sizeBytes: file.sizeBytes };
+		}
+
+		const plan = buildSellerActionPlan({
+			ppcFindings: ppcResult?.findings ?? [],
+			profitabilityFindings: profitabilityResult?.findings ?? [],
+			...(params.limit !== undefined ? { limit: params.limit } : {}),
+		});
+		const result = {
+			plan,
+			sources: {
+				ppc: ppcResult
+					? {
+						rowsAnalyzed: ppcResult.rowsAnalyzed,
+						findingsCount: ppcResult.findingsCount,
+						policy: ppcResult.policy,
+						warnings: ppcResult.inspection.warnings,
+					}
+					: null,
+				profitability: profitabilityResult
+					? {
+						rowsAnalyzed: profitabilityResult.rowsAnalyzed,
+						findingsCount: profitabilityResult.findingsCount,
+						policy: profitabilityResult.policy,
+						warnings: profitabilityResult.inspection.warnings,
+					}
+					: null,
+			},
+		};
+
+		return {
+			content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+			details: { files, result },
+		};
+	},
+});
+
 export default function (pi: ExtensionAPI) {
 	pi.registerTool(inspectReportTool);
 	pi.registerTool(diagnosePpcTool);
 	pi.registerTool(diagnoseProfitTool);
+	pi.registerTool(buildActionPlanTool);
 }
