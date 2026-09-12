@@ -14,7 +14,16 @@ import {
 import { normalizeSellerAmazonAdsMcpSessionContext } from "./session.ts";
 import type { SellerAmazonAdsMcpReadRequest, SellerAmazonAdsMcpTransport } from "./types.ts";
 
-function unavailable(operation: SellerExecutionOperation, reason: string): SellerTrustedOperationState {
+type TrustedStateReadStage =
+	| "account-scope-validation"
+	| "session-validation"
+	| "capability-catalog-validation"
+	| "semantic-binding-validation"
+	| "connector-read"
+	| "result-validation";
+
+function unavailable(operation: SellerExecutionOperation, stage: TrustedStateReadStage): SellerTrustedOperationState {
+	const reason = `Amazon Ads MCP trusted state unavailable: ${stage}`;
 	return operation.operation === "set-bid"
 		? { operation: "set-bid", status: "unavailable", reason }
 		: { operation: "add-negative-exact", status: "unavailable", reason };
@@ -92,23 +101,32 @@ export function createSellerAmazonAdsMcpStateReader(
 ): SellerExecutionStateReader {
 	return {
 		async readOperationState(accountScope, operation) {
+			let stage: TrustedStateReadStage = "account-scope-validation";
 			try {
 				assertSellerAmazonAdsAccountScope(accountScope);
+
+				stage = "session-validation";
 				const session = normalizeSellerAmazonAdsMcpSessionContext(await transport.getSessionContext());
 				if (sellerAmazonAdsAccountScopeKey(session.accountScope) !== sellerAmazonAdsAccountScopeKey(accountScope)) {
 					throw new Error("Amazon Ads MCP authenticated session account scope does not match requested scope");
 				}
 
+				stage = "capability-catalog-validation";
 				const inventory = inventorySellerAmazonAdsMcpCapabilities(await transport.listTools());
+
+				stage = "semantic-binding-validation";
 				const semantic = semanticForOperation(operation);
 				const binding = exactBinding(bindings, semantic);
 				const verifiedBinding = verifySellerAmazonAdsMcpReadBinding(binding, inventory, accountScope);
 				const request = requestForOperation(verifiedBinding, accountScope, operation);
+
+				stage = "connector-read";
 				const result = await transport.callReadTool(structuredClone(request));
+
+				stage = "result-validation";
 				return operation.operation === "set-bid" ? parseBidResult(result) : parseNegativeResult(result);
-			} catch (error) {
-				const message = error instanceof Error ? error.message : String(error);
-				return unavailable(operation, `Amazon Ads MCP trusted state unavailable: ${message}`);
+			} catch {
+				return unavailable(operation, stage);
 			}
 		},
 	};
