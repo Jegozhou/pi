@@ -255,6 +255,34 @@ describe("Amazon Seller Agent V1.3 MCP live-preflight coordinator", () => {
 		expect(requests).toHaveLength(0);
 	});
 
+	it("never propagates raw connector preflight exceptions or credentials into the result", async () => {
+		const executionPlan = plan();
+		const secret = "SECRET_ACCESS_TOKEN_456";
+		const { store, requests } = conflictingStore();
+		const failingTransport: SellerAmazonAdsMcpTransport = {
+			...transport(),
+			async getSessionContext() {
+				throw new Error(`session failed accessToken=${secret} authorization=Bearer ${secret}`);
+			},
+		};
+		const result = await buildSellerAmazonAdsMcpLivePreflight({
+			plan: executionPlan,
+			authorizationEnvelope: authorization(executionPlan),
+			authorizationSecret: SECRET,
+			transport: failingTransport,
+			bindings: bindings(),
+			idempotencyStore: store,
+			now: NOW,
+		});
+		const serialized = JSON.stringify(result);
+
+		expect(result.status).toBe("blocked-unavailable");
+		expect(result.externalWritesPerformed).toBe(false);
+		expect(requests).toHaveLength(0);
+		expect(serialized).not.toContain(secret);
+		expect(serialized).not.toMatch(/accessToken=|authorization=Bearer/i);
+	});
+
 	it("blocks descriptor drift before any connector read or reservation", async () => {
 		const executionPlan = plan();
 		const calls: SellerAmazonAdsMcpReadRequest[] = [];
