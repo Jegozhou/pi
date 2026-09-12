@@ -1,6 +1,6 @@
 import type { SellerChangeProposal, SellerChangeSet } from "../change-set/types.ts";
 import { simulateBidChange } from "./simulate-bid.ts";
-import type { BidPolicyApplicationResult, BidPolicyOverrides } from "./types.ts";
+import type { BidPolicyApplicationResult, BidPolicyOverrides, BidSimulation } from "./types.ts";
 
 function cloneProposal(proposal: SellerChangeProposal): SellerChangeProposal {
 	return {
@@ -68,7 +68,7 @@ export function applyBidPolicyToChangeSet(
 			};
 		}
 
-		let simulation;
+		let simulation: BidSimulation;
 		try {
 			simulation = simulateBidChange({ currentBid, observedAcos, targetAcos }, policyOverrides);
 		} catch (error) {
