@@ -1,4 +1,4 @@
-import type { SellerActionPlan, SellerActionPlanItem } from "../action-plan/types.ts";
+import type { PpcDecisionContext, SellerActionPlan, SellerActionPlanItem } from "../action-plan/types.ts";
 import type { PpcSourceContext } from "../diagnostics/types.ts";
 import type { TargetSnapshotWarning } from "../types/targeting.ts";
 
@@ -20,6 +20,7 @@ export interface SellerChangeProposal {
 	readiness: SellerChangeProposalReadiness;
 	entity: SellerActionPlanItem["entity"];
 	context?: PpcSourceContext;
+	decisionContext?: PpcDecisionContext;
 	rationale: string;
 	evidence: Array<{ sourceFile: string; sourceRow: number }>;
 	missingInputs: string[];
