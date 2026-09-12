@@ -1,7 +1,12 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it } from "vitest";
 import amazonSellerExtension from "../../../.pi/extensions/amazon-seller/index.ts";
-import type { SellerChangeProposal, SellerChangeSet, SellerExecutionPlan, SellerExecutionReceipt } from "../src/index.ts";
+import type {
+	SellerChangeProposal,
+	SellerChangeSet,
+	SellerExecutionPlan,
+	SellerExecutionReceipt,
+} from "../src/index.ts";
 
 interface HostContextFixture {
 	hasUI: boolean;
@@ -156,8 +161,6 @@ describe("Amazon Seller Agent V1.1 host execution tools", () => {
 		const output = fakeResult.details?.result as { receipt: SellerExecutionReceipt };
 
 		expect(output.receipt.externalWritesPerformed).toBe(false);
-		expect(output.receipt.operations).toEqual([
-			expect.objectContaining({ operation: "set-bid", status: "applied" }),
-		]);
+		expect(output.receipt.operations).toEqual([expect.objectContaining({ operation: "set-bid", status: "applied" })]);
 	});
 });
