@@ -12,6 +12,7 @@ import {
 	type SellerActionPlan,
 	type SellerChangeSet,
 } from "../../../packages/amazon-agent/src/index.ts";
+import { registerAmazonBidPolicyTool } from "./bid-policy-tool.ts";
 import { registerAmazonEnrichmentTool } from "./enrichment-tool.ts";
 import { readAmazonReportFile } from "./file-input.ts";
 
@@ -244,4 +245,5 @@ export default function (pi: ExtensionAPI) {
 	pi.registerTool(requestChangeSetApprovalTool);
 	pi.registerTool(decideChangeSetTool);
 	registerAmazonEnrichmentTool(pi);
+	registerAmazonBidPolicyTool(pi);
 }
