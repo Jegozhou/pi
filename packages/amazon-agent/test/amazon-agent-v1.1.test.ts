@@ -101,12 +101,12 @@ function approvedEnvelope(proposals: SellerChangeProposal[]): SellerApprovalEnve
 describe("Amazon Seller Agent V1.1 execution plan", () => {
 	it("compiles a signed approval envelope into deterministic executable operations", () => {
 		const envelope = approvedEnvelope([bidProposal(), negativeProposal(), reviewProposal()]);
-		const first = buildSellerExecutionPlan(envelope, SECRET, { expectedVersion: 7 });
-		const second = buildSellerExecutionPlan(envelope, SECRET, { expectedVersion: 7 });
+		const first = buildSellerExecutionPlan(envelope, SECRET, { expectedVersion: 8 });
+		const second = buildSellerExecutionPlan(envelope, SECRET, { expectedVersion: 8 });
 
 		expect(first).toEqual(second);
 		expect(first.sourceChangeSetId).toBe("changeset:v1.1");
-		expect(first.sourceChangeSetVersion).toBe(7);
+		expect(first.sourceChangeSetVersion).toBe(8);
 		expect(first.approval.actor).toBe("seller-owner");
 		expect(first.approval.contentDigest).toBe(envelope.proof.contentDigest);
 		expect(first.operations).toEqual([
