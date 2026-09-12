@@ -35,6 +35,10 @@ function profitabilityRank(finding: ProfitabilityFinding): { score: number; stag
 	return { score: finding.priority === "high" ? 310 : 290, stage: "optimize" };
 }
 
+function isPpcFinding(finding: Finding | ProfitabilityFinding): finding is Finding {
+	return finding.category !== "profit-risk";
+}
+
 function createItem(options: {
 	source: SellerActionSource;
 	stage: SellerActionStage;
@@ -42,11 +46,12 @@ function createItem(options: {
 	finding: Finding | ProfitabilityFinding;
 }): Omit<SellerActionPlanItem, "rank"> {
 	const { finding } = options;
-	const context = "context" in finding ? finding.context : undefined;
-	const decisionContext = options.source === "ppc" && "metrics" in finding && "thresholds" in finding
+	const ppcFinding = isPpcFinding(finding) ? finding : null;
+	const context = ppcFinding?.context;
+	const decisionContext = ppcFinding
 		? {
-			observedAcos: finding.metrics.acos,
-			targetAcos: typeof finding.thresholds.targetAcos === "number" ? finding.thresholds.targetAcos : null,
+			observedAcos: ppcFinding.metrics.acos,
+			targetAcos: typeof ppcFinding.thresholds.targetAcos === "number" ? ppcFinding.thresholds.targetAcos : null,
 		}
 		: undefined;
 	return {
