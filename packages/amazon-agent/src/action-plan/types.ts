@@ -1,4 +1,4 @@
-import type { Finding, FindingConfidence, FindingPriority } from "../diagnostics/types.ts";
+import type { Finding, FindingConfidence, FindingPriority, PpcSourceContext } from "../diagnostics/types.ts";
 import type { ProfitabilityFinding } from "../types/profitability.ts";
 
 export type SellerActionSource = "ppc" | "profitability";
@@ -20,6 +20,7 @@ export interface SellerActionPlanItem {
 	confidence: FindingConfidence | ProfitabilityFinding["confidence"];
 	dataQuality: SellerActionDataQuality;
 	entity: { type: "search-term" | "asin" | "sku"; value: string };
+	context?: PpcSourceContext;
 	rationale: string;
 	recommendedAction: { type: string; summary: string };
 	evidence: Array<{ sourceFile: string; sourceRow: number }>;
