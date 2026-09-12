@@ -1,5 +1,6 @@
 export { buildSellerActionPlan } from "./action-plan/build-action-plan.ts";
 export type {
+	PpcDecisionContext,
 	SellerActionDataQuality,
 	SellerActionPlan,
 	SellerActionPlanInput,
@@ -7,6 +8,17 @@ export type {
 	SellerActionSource,
 	SellerActionStage,
 } from "./action-plan/types.ts";
+export { applyBidPolicyToChangeSet } from "./bid-policy/apply-bid-policy.ts";
+export { DEFAULT_BID_POLICY, simulateBidChange } from "./bid-policy/simulate-bid.ts";
+export type {
+	BidGuardrailApplied,
+	BidPolicy,
+	BidPolicyApplicationResult,
+	BidPolicyDiagnostics,
+	BidPolicyOverrides,
+	BidSimulation,
+	BidSimulationInput,
+} from "./bid-policy/types.ts";
 export { buildSellerChangeSet } from "./change-set/build-change-set.ts";
 export { decideSellerChangeSet, requestSellerChangeSetApproval } from "./change-set/decide-change-set.ts";
 export { enrichSellerChangeSet } from "./change-set/enrich-change-set.ts";
