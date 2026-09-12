@@ -238,6 +238,38 @@ describe("Amazon Seller Agent V1.3 MCP-backed trusted state reader", () => {
 		}
 	});
 
+	it("never copies raw connector exception text or credentials into trusted state reasons", async () => {
+		const secret = "SECRET_REFRESH_TOKEN_123";
+		const failures: SellerAmazonAdsMcpTransport[] = [
+			transport({
+				call: async () => {
+					throw new Error(`request failed accessToken=${secret} authorization=Bearer ${secret}`);
+				},
+			}),
+			{
+				...transport(),
+				async getSessionContext() {
+					throw new Error(`session failed refreshToken=${secret}`);
+				},
+			},
+			{
+				...transport(),
+				async listTools() {
+					throw new Error(`catalog failed clientSecret=${secret}`);
+				},
+			},
+		];
+
+		for (const failingTransport of failures) {
+			const reader = createSellerAmazonAdsMcpStateReader(failingTransport, bindings());
+			const result = await reader.readOperationState(scope, bidOperation);
+			const serialized = JSON.stringify(result);
+			expect(result).toMatchObject({ operation: "set-bid", status: "unavailable" });
+			expect(serialized).not.toContain(secret);
+			expect(serialized).not.toMatch(/accessToken=|refreshToken=|clientSecret=|authorization=Bearer/i);
+		}
+	});
+
 	it("fails closed when a required semantic binding is missing or duplicated", async () => {
 		const all = bindings();
 		for (const badBindings of [[all[1]!], [all[0]!, all[0]!, all[1]!]]) {
