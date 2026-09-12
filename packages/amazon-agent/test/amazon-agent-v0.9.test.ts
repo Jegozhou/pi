@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	buildSellerExecutionDryRun,
+	computeSellerChangeSetContentDigest,
 	type SellerChangeProposal,
 	type SellerChangeSet,
 } from "../src/index.ts";
@@ -69,7 +70,7 @@ function negativeProposal(overrides: Partial<SellerChangeProposal> = {}): Seller
 }
 
 function approvedChangeSet(overrides: Partial<SellerChangeSet> = {}): SellerChangeSet {
-	return {
+	const result: SellerChangeSet = {
 		id: "changeset:v1:approved",
 		version: 4,
 		status: "approved",
@@ -79,9 +80,14 @@ function approvedChangeSet(overrides: Partial<SellerChangeSet> = {}): SellerChan
 			outcome: "approved",
 			actor: "seller-owner",
 			decidedAt: "2026-09-13T00:00:00.000Z",
+			provenance: "trusted-caller",
 		},
 		...overrides,
 	};
+	if (result.status === "approved" && result.decision?.outcome === "approved") {
+		result.decision.contentDigest = computeSellerChangeSetContentDigest(result);
+	}
+	return result;
 }
 
 describe("Amazon V0.9 execution dry run", () => {
@@ -122,9 +128,10 @@ describe("Amazon V0.9 execution dry run", () => {
 	it.each(["draft", "awaiting-approval", "rejected"] as const)("rejects %s Change Sets", (status) => {
 		const changeSet = approvedChangeSet({
 			status,
-			decision: status === "rejected"
-				? { outcome: "rejected", actor: "seller-owner", decidedAt: "2026-09-13T00:00:00.000Z" }
-				: null,
+			decision:
+				status === "rejected"
+					? { outcome: "rejected", actor: "seller-owner", decidedAt: "2026-09-13T00:00:00.000Z" }
+					: null,
 		});
 		expect(() => buildSellerExecutionDryRun(changeSet)).toThrow(/approved/i);
 	});
