@@ -1,3 +1,4 @@
+import { computeSellerChangeSetContentDigest } from "../approval/approval-envelope.ts";
 import type { SellerChangeProposal, SellerChangeSet } from "../change-set/types.ts";
 import type {
 	SellerBidDryRunOperation,
@@ -118,6 +119,17 @@ function validateExpectedVersion(changeSet: SellerChangeSet, expectedVersion: nu
 	}
 }
 
+function validateApprovedContentDigest(changeSet: SellerChangeSet): void {
+	const recordedDigest = changeSet.decision?.contentDigest;
+	if (!recordedDigest) {
+		throw new Error("Execution dry run requires an approved Change Set content digest");
+	}
+	const actualDigest = computeSellerChangeSetContentDigest(changeSet);
+	if (recordedDigest !== actualDigest) {
+		throw new Error("Approved Change Set content digest mismatch; approved content may have been tampered with");
+	}
+}
+
 export function buildSellerExecutionDryRun(
 	changeSet: SellerChangeSet,
 	options: SellerExecutionDryRunOptions = {},
@@ -129,6 +141,7 @@ export function buildSellerExecutionDryRun(
 		throw new Error("Execution dry run requires an explicit approved decision");
 	}
 	validateExpectedVersion(changeSet, options.expectedVersion);
+	validateApprovedContentDigest(changeSet);
 
 	const blockedMutating = changeSet.proposals.filter(
 		(proposal) => isMutatingProposal(proposal) && proposal.readiness === "blocked",
