@@ -49,14 +49,14 @@ export {
 	inventorySellerAmazonAdsMcpCapabilities,
 	requireSellerAmazonAdsMcpReadCandidate,
 } from "./connectors/amazon-ads-mcp/capabilities.ts";
-export {
-	createSellerAmazonAdsMcpReadBinding,
-	verifySellerAmazonAdsMcpReadBinding,
-} from "./connectors/amazon-ads-mcp/read-bindings.ts";
 export type {
 	SellerAmazonAdsMcpReadBinding,
 	SellerAmazonAdsMcpReadBindingInput,
 	SellerAmazonAdsMcpSemanticRead,
+} from "./connectors/amazon-ads-mcp/read-bindings.ts";
+export {
+	createSellerAmazonAdsMcpReadBinding,
+	verifySellerAmazonAdsMcpReadBinding,
 } from "./connectors/amazon-ads-mcp/read-bindings.ts";
 export { normalizeSellerAmazonAdsMcpSessionContext } from "./connectors/amazon-ads-mcp/session.ts";
 export type {
