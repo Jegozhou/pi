@@ -112,6 +112,17 @@ export {
 	verifySellerExecutionAuthorizationEnvelope,
 } from "./live-execution/authorization.ts";
 export type {
+	SellerExecutionIdempotencyReservation,
+	SellerExecutionIdempotencyReservationResult,
+	SellerExecutionIdempotencyStore,
+	SellerExecutionReservation,
+} from "./live-execution/idempotency-store.ts";
+export {
+	assertSellerExecutionIdempotencyReservation,
+	sellerExecutionIdempotencyStorageKey,
+} from "./live-execution/idempotency-store.ts";
+export { createInMemorySellerExecutionIdempotencyStore } from "./live-execution/in-memory-idempotency-store.ts";
+export type {
 	SellerExecutionStatePreflight,
 	SellerExecutionStatePreflightStatus,
 	SellerLiveOperationObservedState,
