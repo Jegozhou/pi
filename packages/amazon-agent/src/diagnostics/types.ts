@@ -18,6 +18,13 @@ export interface EvidenceRef {
 	sourceRow: number;
 }
 
+export interface PpcSourceContext {
+	campaignName: string;
+	adGroupName: string;
+	targeting: string | null;
+	matchType: string | null;
+}
+
 export type RecommendedActionType =
 	| "negative-exact-candidate"
 	| "reduce-bid-candidate"
@@ -47,6 +54,7 @@ export interface Finding {
 		type: "search-term";
 		value: string;
 	};
+	context?: PpcSourceContext;
 	metrics: FindingMetrics;
 	evidence: EvidenceRef[];
 	thresholds: Record<string, number | null>;
