@@ -5,9 +5,27 @@ import {
 	buildProfitDiagnosisResult,
 	buildReportInspectionResult,
 	buildSellerActionPlan,
+	buildSellerChangeSet,
+	decideSellerChangeSet,
+	requestSellerChangeSetApproval,
 	type PpcPolicyOverrides,
+	type SellerActionPlan,
+	type SellerChangeSet,
 } from "../../../packages/amazon-agent/src/index.ts";
 import { readAmazonReportFile } from "./file-input.ts";
+
+function parseJsonObject<T>(raw: string, label: string): T {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		throw new Error(`${label} must contain valid JSON`);
+	}
+	if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+		throw new Error(`${label} must contain a JSON object`);
+	}
+	return parsed as T;
+}
 
 const inspectReportTool = defineTool({
 	name: "amazon_inspect_report",
@@ -155,9 +173,73 @@ const buildActionPlanTool = defineTool({
 	},
 });
 
+const buildChangeSetTool = defineTool({
+	name: "amazon_build_change_set",
+	label: "Build Amazon Seller Change Set",
+	description:
+		"Convert a seller Action Plan into an auditable pre-execution Change Set. Missing account identifiers or before/after values stay explicitly blocked; this tool never calls Amazon or executes a mutation.",
+	parameters: Type.Object({
+		actionPlanJson: Type.String({ description: "JSON object for a SellerActionPlan returned by amazon_build_action_plan" }),
+	}),
+	async execute(_toolCallId, params) {
+		const actionPlan = parseJsonObject<SellerActionPlan>(params.actionPlanJson, "actionPlanJson");
+		const result = buildSellerChangeSet(actionPlan);
+		return {
+			content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+			details: { result },
+		};
+	},
+});
+
+const requestChangeSetApprovalTool = defineTool({
+	name: "amazon_request_change_set_approval",
+	label: "Request Amazon Change Set Approval",
+	description:
+		"Move a fully specified Change Set from draft to awaiting-approval. Fails closed if a mutating proposal is blocked or if there is no ready mutation. This does not execute anything.",
+	parameters: Type.Object({
+		changeSetJson: Type.String({ description: "JSON object for a SellerChangeSet" }),
+	}),
+	async execute(_toolCallId, params) {
+		const changeSet = parseJsonObject<SellerChangeSet>(params.changeSetJson, "changeSetJson");
+		const result = requestSellerChangeSetApproval(changeSet);
+		return {
+			content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+			details: { result },
+		};
+	},
+});
+
+const decideChangeSetTool = defineTool({
+	name: "amazon_decide_change_set",
+	label: "Record Amazon Change Set Decision",
+	description:
+		"Record an explicit human approve/reject decision for a Change Set already awaiting approval. Approval means approved for a future executor only; nothing is executed or written to Amazon.",
+	parameters: Type.Object({
+		changeSetJson: Type.String({ description: "JSON object for a SellerChangeSet in awaiting-approval status" }),
+		decision: Type.Union([Type.Literal("approve"), Type.Literal("reject")]),
+		actor: Type.String({ description: "Non-empty identifier for the human making the decision" }),
+		decidedAt: Type.String({ description: "Canonical ISO timestamp, for example 2026-09-13T00:00:00.000Z" }),
+	}),
+	async execute(_toolCallId, params) {
+		const changeSet = parseJsonObject<SellerChangeSet>(params.changeSetJson, "changeSetJson");
+		const result = decideSellerChangeSet(changeSet, {
+			decision: params.decision,
+			actor: params.actor,
+			decidedAt: params.decidedAt,
+		});
+		return {
+			content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+			details: { result },
+		};
+	},
+});
+
 export default function (pi: ExtensionAPI) {
 	pi.registerTool(inspectReportTool);
 	pi.registerTool(diagnosePpcTool);
 	pi.registerTool(diagnoseProfitTool);
 	pi.registerTool(buildActionPlanTool);
+	pi.registerTool(buildChangeSetTool);
+	pi.registerTool(requestChangeSetApprovalTool);
+	pi.registerTool(decideChangeSetTool);
 }
