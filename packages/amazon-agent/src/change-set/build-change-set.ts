@@ -13,35 +13,15 @@ function operationFor(item: SellerActionPlanItem): {
 } {
 	switch (item.recommendedAction.type) {
 		case "negative-exact-candidate":
-			return {
-				operation: "add-negative-exact",
-				readiness: "blocked",
-				missingInputs: ["campaign identity", "ad group identity"],
-			};
+			return { operation: "add-negative-exact", readiness: "blocked", missingInputs: ["campaign identity", "ad group identity"] };
 		case "reduce-bid-candidate":
-			return {
-				operation: "set-bid",
-				readiness: "blocked",
-				missingInputs: ["target identity", "current bid", "proposed bid"],
-			};
+			return { operation: "set-bid", readiness: "blocked", missingInputs: ["target identity", "current bid", "proposed bid"] };
 		case "exact-target-candidate":
-			return {
-				operation: "create-exact-target",
-				readiness: "blocked",
-				missingInputs: ["destination campaign identity", "destination ad group identity", "proposed bid"],
-			};
+			return { operation: "create-exact-target", readiness: "blocked", missingInputs: ["destination campaign identity", "destination ad group identity", "proposed bid"] };
 		case "scale-candidate":
-			return {
-				operation: "scale",
-				readiness: "blocked",
-				missingInputs: ["scale mechanism", "target identity", "current value", "proposed value"],
-			};
+			return { operation: "scale", readiness: "blocked", missingInputs: ["scale mechanism", "target identity", "current value", "proposed value"] };
 		case "review-profitability-candidate":
-			return {
-				operation: "review-profitability",
-				readiness: "review-only",
-				missingInputs: [],
-			};
+			return { operation: "review-profitability", readiness: "review-only", missingInputs: [] };
 		default:
 			throw new Error(`Unsupported seller action type: ${item.recommendedAction.type}`);
 	}
@@ -57,6 +37,7 @@ function proposalFor(item: SellerActionPlanItem): SellerChangeProposal {
 		operation: mapped.operation,
 		readiness: mapped.readiness,
 		entity: { ...item.entity },
+		...(item.context ? { context: { ...item.context } } : {}),
 		rationale: item.rationale,
 		evidence: item.evidence.map((evidence) => ({ ...evidence })),
 		missingInputs: [...mapped.missingInputs],
