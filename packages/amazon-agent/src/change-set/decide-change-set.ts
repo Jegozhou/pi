@@ -62,6 +62,9 @@ export function decideSellerChangeSet(
 	if (changeSet.status !== "awaiting-approval") {
 		throw new Error(`Decision requires awaiting-approval status; received ${changeSet.status}`);
 	}
+	if (input.provenance !== "host-ui-confirmation") {
+		throw new Error("Decision provenance must be host-ui-confirmation");
+	}
 	const actor = input.actor.trim();
 	if (!actor) {
 		throw new RangeError("actor must be a non-empty string");
@@ -78,7 +81,7 @@ export function decideSellerChangeSet(
 			outcome,
 			actor,
 			decidedAt: input.decidedAt,
-			provenance: input.provenance ?? "trusted-caller",
+			provenance: "host-ui-confirmation",
 		},
 	};
 
