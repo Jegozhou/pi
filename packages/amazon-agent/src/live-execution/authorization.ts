@@ -11,6 +11,7 @@ export interface SellerExecutionAuthorization {
 	sourceChangeSetId: string;
 	sourceChangeSetVersion: number;
 	approvedContentDigest: string;
+	executionPlanContentDigest: string;
 	accountScope: SellerAmazonAdsAccountScope;
 	issuedAt: string;
 	expiresAt: string;
@@ -51,6 +52,14 @@ function canonicalize(value: unknown): unknown {
 		return result;
 	}
 	return value;
+}
+
+function sha256Canonical(value: unknown): string {
+	return createHash("sha256").update(JSON.stringify(canonicalize(value))).digest("hex");
+}
+
+function computeExecutionPlanContentDigest(plan: SellerExecutionPlan): string {
+	return sha256Canonical(plan);
 }
 
 function timestampMillis(value: string, label: string): number {
@@ -102,6 +111,7 @@ function authorizationFromPlan(
 		sourceChangeSetId: plan.sourceChangeSetId,
 		sourceChangeSetVersion: plan.sourceChangeSetVersion,
 		approvedContentDigest: plan.approval.contentDigest,
+		executionPlanContentDigest: computeExecutionPlanContentDigest(plan),
 		accountScope: structuredClone(accountScope),
 		issuedAt: options.issuedAt,
 		expiresAt: options.expiresAt,
@@ -111,8 +121,7 @@ function authorizationFromPlan(
 }
 
 function computeAuthorizationDigest(authorization: SellerExecutionAuthorization): string {
-	const canonicalJson = JSON.stringify(canonicalize(authorization));
-	return createHash("sha256").update(canonicalJson).digest("hex");
+	return sha256Canonical(authorization);
 }
 
 function signatureMessage(authorization: SellerExecutionAuthorization, contentDigest: string): string {
@@ -142,6 +151,12 @@ function assertAuthorizationShape(authorization: SellerExecutionAuthorization): 
 	if (typeof authorization.approvedContentDigest !== "string" || authorization.approvedContentDigest.length === 0) {
 		throw new Error("Execution authorization approved content digest is required");
 	}
+	if (
+		typeof authorization.executionPlanContentDigest !== "string" ||
+		authorization.executionPlanContentDigest.length === 0
+	) {
+		throw new Error("Execution authorization plan content digest is required");
+	}
 	if (typeof authorization.nonce !== "string" || authorization.nonce.trim().length === 0) {
 		throw new Error("Execution authorization nonce is required");
 	}
@@ -162,6 +177,9 @@ function assertAuthorizationMatchesPlan(authorization: SellerExecutionAuthorizat
 		authorization.approvedContentDigest !== plan.approval.contentDigest
 	) {
 		throw new Error("Execution authorization plan identity mismatch");
+	}
+	if (authorization.executionPlanContentDigest !== computeExecutionPlanContentDigest(plan)) {
+		throw new Error("Execution authorization plan content digest mismatch");
 	}
 }
 
