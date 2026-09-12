@@ -2,6 +2,7 @@ import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
 	buildPpcDiagnosisResult,
+	buildProfitDiagnosisResult,
 	buildReportInspectionResult,
 	type PpcPolicyOverrides,
 } from "../../../packages/amazon-agent/src/index.ts";
@@ -20,10 +21,7 @@ const inspectReportTool = defineTool({
 		const result = buildReportInspectionResult(file.content, file.fileName);
 		return {
 			content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-			details: {
-				file: { fileName: file.fileName, sizeBytes: file.sizeBytes },
-				result,
-			},
+			details: { file: { fileName: file.fileName, sizeBytes: file.sizeBytes }, result },
 		};
 	},
 });
@@ -36,21 +34,11 @@ const diagnosePpcTool = defineTool({
 	parameters: Type.Object({
 		filePath: Type.String({ description: "Path to the local Amazon Ads Search Term CSV or TSV report" }),
 		targetAcos: Type.Optional(Type.Number({ description: "Seller target ACOS as a fraction, for example 0.30 for 30%" })),
-		minimumClicksNoSale: Type.Optional(
-			Type.Number({ description: "Minimum clicks before a zero-sales search term can be flagged" }),
-		),
-		minimumSpendNoSale: Type.Optional(
-			Type.Number({ description: "Minimum spend before a zero-sales search term can be flagged" }),
-		),
-		minimumOrdersScale: Type.Optional(
-			Type.Number({ description: "Minimum attributed orders before migration or scaling findings" }),
-		),
-		highAcosMultiplier: Type.Optional(
-			Type.Number({ description: "High-ACOS threshold multiplier applied to target ACOS" }),
-		),
-		lowAcosScaleMargin: Type.Optional(
-			Type.Number({ description: "Required fractional margin below target ACOS for a scale candidate" }),
-		),
+		minimumClicksNoSale: Type.Optional(Type.Number({ description: "Minimum clicks before a zero-sales search term can be flagged" })),
+		minimumSpendNoSale: Type.Optional(Type.Number({ description: "Minimum spend before a zero-sales search term can be flagged" })),
+		minimumOrdersScale: Type.Optional(Type.Number({ description: "Minimum attributed orders before migration or scaling findings" })),
+		highAcosMultiplier: Type.Optional(Type.Number({ description: "High-ACOS threshold multiplier applied to target ACOS" })),
+		lowAcosScaleMargin: Type.Optional(Type.Number({ description: "Required fractional margin below target ACOS for a scale candidate" })),
 	}),
 	async execute(_toolCallId, params, signal) {
 		const file = await readAmazonReportFile(params.filePath, signal);
@@ -65,10 +53,30 @@ const diagnosePpcTool = defineTool({
 		const result = buildPpcDiagnosisResult(file.content, file.fileName, policyOverrides);
 		return {
 			content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-			details: {
-				file: { fileName: file.fileName, sizeBytes: file.sizeBytes },
-				result,
-			},
+			details: { file: { fileName: file.fileName, sizeBytes: file.sizeBytes }, result },
+		};
+	},
+});
+
+const diagnoseProfitTool = defineTool({
+	name: "amazon_diagnose_profit",
+	label: "Diagnose Amazon Profitability",
+	description:
+		"Read one explicitly selected local seller profitability CSV/TSV input and calculate known contribution economics from supplied values only. Missing costs remain explicit; results are never represented as net profit.",
+	parameters: Type.Object({
+		filePath: Type.String({ description: "Path to the local profitability CSV or TSV input" }),
+		requiredContributionMargin: Type.Optional(
+			Type.Number({ description: "Optional seller-required contribution margin as a fraction, for example 0.20" }),
+		),
+	}),
+	async execute(_toolCallId, params, signal) {
+		const file = await readAmazonReportFile(params.filePath, signal);
+		const result = buildProfitDiagnosisResult(file.content, file.fileName, {
+			requiredContributionMargin: params.requiredContributionMargin,
+		});
+		return {
+			content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+			details: { file: { fileName: file.fileName, sizeBytes: file.sizeBytes }, result },
 		};
 	},
 });
@@ -76,4 +84,5 @@ const diagnosePpcTool = defineTool({
 export default function (pi: ExtensionAPI) {
 	pi.registerTool(inspectReportTool);
 	pi.registerTool(diagnosePpcTool);
+	pi.registerTool(diagnoseProfitTool);
 }

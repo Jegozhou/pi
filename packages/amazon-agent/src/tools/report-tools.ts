@@ -1,8 +1,20 @@
-import { DEFAULT_PPC_POLICY } from "../diagnostics/policy.ts";
 import { diagnosePpc } from "../diagnostics/diagnose-ppc.ts";
+import {
+	diagnoseProfitability,
+	type ProfitabilityPolicy,
+} from "../diagnostics/diagnose-profit.ts";
+import { DEFAULT_PPC_POLICY } from "../diagnostics/policy.ts";
 import type { Finding, FindingCategory, PpcPolicy } from "../diagnostics/types.ts";
+import { calculateProfitabilityMetrics } from "../metrics/profitability.ts";
+import { normalizeProfitabilityReport } from "../parsers/profitability-report.ts";
 import { inspectAdvertisingReport, normalizeSearchTermReport } from "../parsers/search-term-report.ts";
 import type { NormalizedAdvertisingRow, ReportInspection } from "../types/advertising.ts";
+import type {
+	NormalizedProfitabilityRow,
+	ProfitabilityFinding,
+	ProfitabilityMetrics,
+	ProfitabilityReportInspection,
+} from "../types/profitability.ts";
 
 export interface ReportInspectionResult {
 	inspection: ReportInspection;
@@ -18,7 +30,21 @@ export interface PpcDiagnosisResult {
 	findings: Finding[];
 }
 
+export interface ProfitDiagnosisResult {
+	inspection: ProfitabilityReportInspection;
+	policy: ProfitabilityPolicy;
+	rowsAnalyzed: number;
+	results: Array<{
+		entity: { asin: string | null; sku: string | null };
+		metrics: ProfitabilityMetrics;
+		source: { sourceFile: string; sourceRow: number };
+	}>;
+	findingsCount: number;
+	findings: ProfitabilityFinding[];
+}
+
 export type PpcPolicyOverrides = Partial<PpcPolicy>;
+export type ProfitabilityPolicyOverrides = Partial<ProfitabilityPolicy>;
 
 export function buildReportInspectionResult(content: string, fileName: string): ReportInspectionResult {
 	const inspection = inspectAdvertisingReport({ content, fileName });
@@ -57,6 +83,35 @@ export function buildPpcDiagnosisResult(
 		rowsAnalyzed: rows.length,
 		findingsCount: findings.length,
 		byCategory,
+		findings,
+	};
+}
+
+export function buildProfitDiagnosisResult(
+	content: string,
+	fileName: string,
+	policyOverrides: ProfitabilityPolicyOverrides = {},
+): ProfitDiagnosisResult {
+	const parsed = normalizeProfitabilityReport({ content, fileName });
+	if (parsed.inspection.missingFields.length > 0) {
+		throw new Error(
+			`Unsupported profitability input; missing required fields: ${parsed.inspection.missingFields.join(", ")}`,
+		);
+	}
+	const policy: ProfitabilityPolicy = {
+		requiredContributionMargin: policyOverrides.requiredContributionMargin ?? null,
+	};
+	const findings = diagnoseProfitability(parsed.rows, policy);
+	return {
+		inspection: parsed.inspection,
+		policy,
+		rowsAnalyzed: parsed.rows.length,
+		results: parsed.rows.map((row: NormalizedProfitabilityRow) => ({
+			entity: { asin: row.asin, sku: row.sku },
+			metrics: calculateProfitabilityMetrics(row),
+			source: { sourceFile: row.sourceFile, sourceRow: row.sourceRow },
+		})),
+		findingsCount: findings.length,
 		findings,
 	};
 }

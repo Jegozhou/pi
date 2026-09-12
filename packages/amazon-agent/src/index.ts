@@ -1,4 +1,8 @@
 export { diagnosePpc } from "./diagnostics/diagnose-ppc.ts";
+export {
+	diagnoseProfitability,
+	type ProfitabilityPolicy,
+} from "./diagnostics/diagnose-profit.ts";
 export { DEFAULT_PPC_POLICY } from "./diagnostics/policy.ts";
 export type {
 	EvidenceRef,
@@ -12,13 +16,18 @@ export type {
 	RecommendedActionType,
 } from "./diagnostics/types.ts";
 export { calculateAdvertisingMetrics, safeRatio } from "./metrics/advertising.ts";
+export { calculateProfitabilityMetrics } from "./metrics/profitability.ts";
 export { DelimitedTextError, parseDelimitedText } from "./parsers/delimited.ts";
+export { normalizeProfitabilityReport } from "./parsers/profitability-report.ts";
 export { inspectAdvertisingReport, normalizeSearchTermReport } from "./parsers/search-term-report.ts";
 export {
 	buildPpcDiagnosisResult,
+	buildProfitDiagnosisResult,
 	buildReportInspectionResult,
 	type PpcDiagnosisResult,
 	type PpcPolicyOverrides,
+	type ProfitDiagnosisResult,
+	type ProfitabilityPolicyOverrides,
 	type ReportInspectionResult,
 } from "./tools/report-tools.ts";
 export type {
@@ -31,3 +40,12 @@ export type {
 	ReportKind,
 	ReportWarning,
 } from "./types/advertising.ts";
+export type {
+	NormalizedProfitabilityRow,
+	ProfitabilityCostCategory,
+	ProfitabilityFinding,
+	ProfitabilityMetrics,
+	ProfitabilityNumericField,
+	ProfitabilityReportInspection,
+	ProfitabilityWarning,
+} from "./types/profitability.ts";
