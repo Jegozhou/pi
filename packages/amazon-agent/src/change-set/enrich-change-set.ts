@@ -14,6 +14,7 @@ function cloneProposal(proposal: SellerChangeProposal): SellerChangeProposal {
 		...proposal,
 		entity: { ...proposal.entity },
 		...(proposal.context ? { context: { ...proposal.context } } : {}),
+		...(proposal.decisionContext ? { decisionContext: { ...proposal.decisionContext } } : {}),
 		evidence: proposal.evidence.map((item) => ({ ...item })),
 		missingInputs: [...proposal.missingInputs],
 		before: proposal.before ? { ...proposal.before } : null,
