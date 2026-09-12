@@ -43,6 +43,12 @@ function createItem(options: {
 }): Omit<SellerActionPlanItem, "rank"> {
 	const { finding } = options;
 	const context = "context" in finding ? finding.context : undefined;
+	const decisionContext = options.source === "ppc" && "metrics" in finding && "thresholds" in finding
+		? {
+			observedAcos: finding.metrics.acos,
+			targetAcos: typeof finding.thresholds.targetAcos === "number" ? finding.thresholds.targetAcos : null,
+		}
+		: undefined;
 	return {
 		id: `action:${options.source}:${finding.id}`,
 		source: options.source,
@@ -52,6 +58,7 @@ function createItem(options: {
 		dataQuality: options.dataQuality,
 		entity: finding.entity,
 		...(context ? { context: { ...context } } : {}),
+		...(decisionContext ? { decisionContext } : {}),
 		rationale: finding.rationale,
 		recommendedAction: { type: finding.recommendedAction.type, summary: finding.recommendedAction.summary },
 		evidence: finding.evidence.map((evidence) => ({ ...evidence })),
