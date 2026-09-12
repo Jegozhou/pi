@@ -45,6 +45,14 @@ export type {
 	SellerChangeSetStatus,
 	SellerDecisionProvenance,
 } from "./change-set/types.ts";
+export { normalizeSellerAmazonAdsMcpSessionContext } from "./connectors/amazon-ads-mcp/session.ts";
+export type {
+	SellerAmazonAdsMcpNormalizedSession,
+	SellerAmazonAdsMcpReadRequest,
+	SellerAmazonAdsMcpSessionContext,
+	SellerAmazonAdsMcpToolDescriptor,
+	SellerAmazonAdsMcpTransport,
+} from "./connectors/amazon-ads-mcp/types.ts";
 export { diagnosePpc } from "./diagnostics/diagnose-ppc.ts";
 export {
 	diagnoseProfitability,
