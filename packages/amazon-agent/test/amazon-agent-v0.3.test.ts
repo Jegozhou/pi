@@ -65,17 +65,14 @@ describe("Amazon Pi tool orchestration", () => {
 		expect(result.findings).toEqual([]);
 	});
 
-	it("preserves parse warnings and source evidence in diagnosis output", () => {
+	it("preserves parse warnings during inspection and rejects invalid numeric diagnosis", () => {
 		const report = supportedReport("Discovery,AG 1,running shoes,BROAD,trail running shoes,not-a-number,20,30,0,0,USD");
-		const result = buildPpcDiagnosisResult(report, "bad.csv");
+		const inspection = buildReportInspectionResult(report, "bad.csv");
 
-		expect(result.inspection.warnings).toEqual([
+		expect(inspection.inspection.warnings).toEqual([
 			expect.objectContaining({ field: "impressions", sourceRow: 2, rawValue: "not-a-number" }),
 		]);
-		expect(result.findings[0]).toMatchObject({
-			ruleId: "ppc.waste-without-sales.v1",
-			evidence: [{ sourceFile: "bad.csv", sourceRow: 2 }],
-		});
+		expect(() => buildPpcDiagnosisResult(report, "bad.csv")).toThrow(/invalid numeric|data quality/i);
 	});
 
 	it("rejects directories as report files", async () => {
