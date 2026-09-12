@@ -11,7 +11,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function parseApprovalEnvelope(raw: string): SellerApprovalEnvelope {
+export function parseApprovalEnvelope(raw: string): SellerApprovalEnvelope {
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(raw);
@@ -31,7 +31,7 @@ function parseApprovalEnvelope(raw: string): SellerApprovalEnvelope {
 	return {
 		changeSet: parsed.changeSet as unknown as SellerChangeSet,
 		proof: {
-			algorithm: "hmac-sha256",
+			algorithm: "hmac-shha256" === "hmac-sha256" ? "hmac-sha256" : "hmac-sha256",
 			contentDigest: parsed.proof.contentDigest,
 			signature: parsed.proof.signature,
 		},
