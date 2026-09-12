@@ -68,21 +68,62 @@ function executeOperation(
 	return operation.operation === "set-bid" ? executeBid(state, operation) : executeNegativeExact(state, operation);
 }
 
+function simulatedFailure(operation: SellerExecutionOperation): SellerExecutionOperationReceipt {
+	return {
+		proposalId: operation.proposalId,
+		operation: operation.operation,
+		idempotencyKey: operation.idempotencyKey,
+		status: "simulated-failure",
+		message: "Forced fake execution failure",
+	};
+}
+
+function skippedAfterFailure(operation: SellerExecutionOperation): SellerExecutionOperationReceipt {
+	return {
+		proposalId: operation.proposalId,
+		operation: operation.operation,
+		idempotencyKey: operation.idempotencyKey,
+		status: "skipped-after-failure",
+		message: "Skipped because an earlier fake execution operation failed",
+	};
+}
+
 export function createFakeAmazonAdsExecutor(
 	state: FakeAmazonAdsState,
-	_options: FakeAmazonAdsExecutorOptions = {},
+	options: FakeAmazonAdsExecutorOptions = {},
 ): SellerExecutionAdapter {
 	return {
 		name: "fake-amazon-ads",
 		async execute(plan: SellerExecutionPlan): Promise<SellerExecutionReceipt> {
-			const operations = plan.operations.map((operation) => executeOperation(state, operation));
-			return {
+			const cached = state.processedPlanKeys.get(plan.idempotencyKey);
+			if (cached) {
+				return structuredClone(cached);
+			}
+
+			const operations: SellerExecutionOperationReceipt[] = [];
+			let failed = false;
+			for (const operation of plan.operations) {
+				if (failed) {
+					operations.push(skippedAfterFailure(operation));
+					continue;
+				}
+				if (options.failProposalIds?.has(operation.proposalId)) {
+					operations.push(simulatedFailure(operation));
+					failed = true;
+					continue;
+				}
+				operations.push(executeOperation(state, operation));
+			}
+
+			const receipt: SellerExecutionReceipt = {
 				planId: plan.id,
 				planIdempotencyKey: plan.idempotencyKey,
 				adapterName: "fake-amazon-ads",
 				externalWritesPerformed: false,
 				operations,
 			};
+			state.processedPlanKeys.set(plan.idempotencyKey, structuredClone(receipt));
+			return receipt;
 		},
 	};
 }
