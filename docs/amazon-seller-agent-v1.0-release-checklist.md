@@ -9,8 +9,8 @@ Use this checklist before moving PR #1 from Draft to Ready for review.
    - Status: implemented.
 
 2. Unsupported or insufficient data fails clearly.
-   - Evidence: missing-field checks, malformed numeric warnings, ambiguous target-resolution fail-closed behavior.
-   - Status: implemented.
+   - Evidence: missing-field checks, header-only report rejection, invalid/negative numeric rejection, ambiguous target-resolution fail-closed behavior.
+   - Status: implemented; current-head regression run still required.
 
 3. Metrics are calculated deterministically.
    - Evidence: TypeScript metrics engine for CTR/CVR/CPC/ACOS/ROAS and known contribution economics.
@@ -38,7 +38,7 @@ Use this checklist before moving PR #1 from Draft to Ready for review.
 
 9. Automated tests do not require real Amazon/model credentials.
    - Evidence: all current Amazon tests are deterministic/local; V1.0 fixtures are synthetic.
-   - Status: implemented at package-test design level; full repository CI still requires verification on the exact PR head.
+   - Status: implemented at package-test design level; current-head rerun and repository CI still require verification.
 
 10. Amazon-specific logic stays outside Pi core.
     - Evidence: domain code under `packages/amazon-agent`, project extension under `.pi/extensions`, project Skill under `.pi/skills`.
@@ -55,11 +55,44 @@ Use this checklist before moving PR #1 from Draft to Ready for review.
 - [x] V1.0 end-to-end acceptance test exists.
 - [x] Package README exists.
 - [x] Seller/operator example workflow exists.
-- [ ] Targeted V1.0 acceptance test has been run successfully in a repository-capable environment.
-- [ ] Amazon package strict/type/build checks have been run successfully in a repository-capable environment.
-- [ ] Independent code review has been performed on the current V1.0 head.
+- [x] Initial independent Codex release review was performed on head `bae4c24ea88448220d4a4a185ad909ccd4474838` and returned `NOT READY`.
+- [x] Five P1 findings from that review have corresponding regression tests and code changes on the feature branch.
+- [x] Approval now requires host `ui.confirm`, records host provenance, seals approved content with a digest, and returns an HMAC-signed approval envelope.
+- [x] Pi Dry Run now requires the signed envelope instead of bare approved Change Set JSON.
+- [x] Blank campaign/ad-group/target identity and conflicting target rows fail closed.
+- [x] Header-only reports fail as insufficient data.
+- [x] Invalid/negative PPC numeric data, non-positive current bid, missing scale source-target context, and Change Set ID collision cases have regression coverage/code hardening.
+- [ ] Current-head Amazon package test suite has been run successfully after the blocker fixes.
+- [ ] Current-head Amazon package build has been run successfully after the blocker fixes.
+- [ ] Current-head Biome check has been run and all Amazon/change-specific diagnostics fixed.
+- [ ] A second independent Codex review has verified that every original P1 is closed.
+- [ ] Pi extension host-confirmation and signed-envelope flow has been exercised in a dialog-capable Pi host.
 - [ ] GitHub CI/status has been observed for the exact current head, or the absence of CI has been explicitly accepted before merge.
 - [ ] PR is manually moved from Draft only after the verification items above are satisfied.
+
+## Approval release gates
+
+Before Ready, verify all of these behaviors on the exact current head:
+
+```text
+model calls amazon_decide_change_set
+AND no dialog-capable host UI
+=> decision rejected
+
+model calls amazon_decide_change_set
+AND human declines host dialog
+=> decision rejected
+
+human confirms exact awaiting Change Set
+=> approved Change Set receives host-ui-confirmation provenance + content digest
+=> tool returns signed approval envelope
+
+signed envelope is unchanged
+=> amazon_build_execution_dry_run may verify and continue
+
+proposal / target / before / after / decision / digest / signature is modified
+=> envelope verification fails
+```
 
 ## Explicitly deferred from the file-first V1.0 release
 
@@ -78,10 +111,14 @@ These are not reasons to claim V1.0 core diagnosis is incomplete, but they remai
 Move PR #1 to Ready only when:
 
 ```text
-V1.0 acceptance test passes
-AND Amazon package type/build verification passes
+current-head Amazon tests pass
+AND Amazon package build passes
+AND change-specific Biome check passes
+AND host approval flow is actually exercised
+AND independent re-review has no unresolved P1 blocker
 AND current-head diff has no accidental Amazon credentials/network mutation
-AND independent review has no unresolved blocking issue
 ```
+
+Full-repository TypeScript failures that are proven pre-existing outside the Amazon change set must be recorded separately rather than misrepresented as Amazon-package success or failure.
 
 Real Amazon account execution is intentionally **not** part of this V1.0 go/no-go decision.
