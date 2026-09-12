@@ -82,7 +82,7 @@ function normalizeDescriptor(input: SellerAmazonAdsMcpToolDescriptor): SellerAma
 function classify(descriptor: SellerAmazonAdsMcpToolDescriptor): SellerAmazonAdsMcpCapabilityClassification {
 	const annotations = descriptor.annotations;
 	if (annotations?.destructiveHint === true || annotations?.readOnlyHint === false) return "mutation-candidate";
-	if (annotations?.readOnlyHint === true && annotations.destructiveHint !== true) return "read-candidate";
+	if (annotations?.readOnlyHint === true) return "read-candidate";
 	return "unknown";
 }
 
