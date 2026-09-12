@@ -68,6 +68,36 @@ describe("Amazon Seller Agent V1.3 MCP capability firewall", () => {
 		expect(first.capabilities[0]?.descriptorDigest).not.toBe(second.capabilities[0]?.descriptorDigest);
 	});
 
+	it("hashes and preserves complete raw descriptor metadata, including fields not modeled by the domain type", () => {
+		const original = {
+			name: "catalog-read-raw-metadata",
+			inputSchema: { type: "object" },
+			outputSchema: { type: "object", properties: { currentBid: { type: "number" } } },
+			annotations: { readOnlyHint: true, openWorldHint: false },
+			_meta: { catalogRevision: 1 },
+		} as unknown as SellerAmazonAdsMcpToolDescriptor;
+		const outputChanged = structuredClone(original) as SellerAmazonAdsMcpToolDescriptor;
+		(outputChanged as unknown as Record<string, unknown>).outputSchema = {
+			type: "object",
+			properties: { currentBid: { type: "string" } },
+		};
+		const annotationChanged = structuredClone(original) as SellerAmazonAdsMcpToolDescriptor;
+		(annotationChanged.annotations as unknown as Record<string, unknown>).openWorldHint = true;
+
+		const first = inventorySellerAmazonAdsMcpCapabilities([original]);
+		const outputInventory = inventorySellerAmazonAdsMcpCapabilities([outputChanged]);
+		const annotationInventory = inventorySellerAmazonAdsMcpCapabilities([annotationChanged]);
+		const stored = first.capabilities[0]?.descriptor as unknown as Record<string, unknown>;
+
+		expect(stored.outputSchema).toEqual({
+			type: "object",
+			properties: { currentBid: { type: "number" } },
+		});
+		expect(stored._meta).toEqual({ catalogRevision: 1 });
+		expect(first.capabilities[0]?.descriptorDigest).not.toBe(outputInventory.capabilities[0]?.descriptorDigest);
+		expect(first.capabilities[0]?.descriptorDigest).not.toBe(annotationInventory.capabilities[0]?.descriptorDigest);
+	});
+
 	it("returns an immutable copy rather than caller-owned descriptor objects", () => {
 		const source = descriptors();
 		const inventory = inventorySellerAmazonAdsMcpCapabilities(source);
