@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
 	createSellerAmazonAdsMcpReadBinding,
 	inventorySellerAmazonAdsMcpCapabilities,
-	verifySellerAmazonAdsMcpReadBinding,
 	type SellerAmazonAdsAccountScope,
 	type SellerAmazonAdsMcpReadBinding,
 	type SellerAmazonAdsMcpSemanticRead,
 	type SellerAmazonAdsMcpToolDescriptor,
+	verifySellerAmazonAdsMcpReadBinding,
 } from "../src/index.ts";
 
 const scope: SellerAmazonAdsAccountScope = {
