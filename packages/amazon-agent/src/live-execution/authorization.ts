@@ -1,10 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { SellerApprovalSecret } from "../approval/approval-envelope.ts";
 import type { SellerExecutionPlan } from "../execution/plan-types.ts";
-import {
-	assertSellerAmazonAdsAccountScope,
-	type SellerAmazonAdsAccountScope,
-} from "./account-scope.ts";
+import { assertSellerAmazonAdsAccountScope, type SellerAmazonAdsAccountScope } from "./account-scope.ts";
 
 export type SellerExecutionAuthorizationSecret = SellerApprovalSecret;
 
@@ -155,10 +152,7 @@ function assertAuthorizationShape(authorization: SellerExecutionAuthorization): 
 	}
 }
 
-function assertAuthorizationMatchesPlan(
-	authorization: SellerExecutionAuthorization,
-	plan: SellerExecutionPlan,
-): void {
+function assertAuthorizationMatchesPlan(authorization: SellerExecutionAuthorization, plan: SellerExecutionPlan): void {
 	assertPlanIdentity(plan);
 	if (
 		authorization.planId !== plan.id ||
@@ -179,9 +173,7 @@ export function createSellerExecutionAuthorizationEnvelope(
 ): SellerExecutionAuthorizationEnvelope {
 	const authorization = authorizationFromPlan(plan, accountScope, options);
 	const contentDigest = computeAuthorizationDigest(authorization);
-	const signature = createHmac("sha256", secret)
-		.update(signatureMessage(authorization, contentDigest))
-		.digest("hex");
+	const signature = createHmac("sha256", secret).update(signatureMessage(authorization, contentDigest)).digest("hex");
 	return {
 		authorization,
 		proof: { algorithm: "hmac-sha256", contentDigest, signature },
