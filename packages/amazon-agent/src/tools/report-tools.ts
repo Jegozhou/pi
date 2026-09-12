@@ -65,11 +65,20 @@ export function buildPpcDiagnosisResult(
 	if (inspection.kind !== "sponsored-products-search-term") {
 		throw new Error(`Unsupported report for PPC diagnosis; missing required fields: ${inspection.missingFields.join(", ")}`);
 	}
+	if (inspection.warnings.length > 0) {
+		throw new Error(`Invalid numeric data in PPC report: ${inspection.warnings.map((warning) => warning.message).join("; ")}`);
+	}
 
 	const policy: PpcPolicy = { ...DEFAULT_PPC_POLICY, ...policyOverrides };
 	const rows = normalizeSearchTermReport({ content, fileName });
 	if (rows.length === 0) {
 		throw new Error("Insufficient PPC data: report contains no data rows");
+	}
+	const incompleteRow = rows.find(
+		(row) => row.impressions === null || row.clicks === null || row.spend === null || row.attributedSales === null,
+	);
+	if (incompleteRow) {
+		throw new Error(`Insufficient PPC data at source row ${incompleteRow.sourceRow}: required numeric value is blank`);
 	}
 	const findings = diagnosePpc(rows, policy);
 	const byCategory: Record<FindingCategory, number> = {
@@ -99,6 +108,11 @@ export function buildProfitDiagnosisResult(
 	if (parsed.inspection.missingFields.length > 0) {
 		throw new Error(
 			`Unsupported profitability input; missing required fields: ${parsed.inspection.missingFields.join(", ")}`,
+		);
+	}
+	if (parsed.inspection.warnings.length > 0) {
+		throw new Error(
+			`Invalid numeric data in profitability report: ${parsed.inspection.warnings.map((warning) => warning.message).join("; ")}`,
 		);
 	}
 	if (parsed.rows.length === 0) {
