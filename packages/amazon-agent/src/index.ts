@@ -45,6 +45,34 @@ export type {
 	SellerChangeSetStatus,
 	SellerDecisionProvenance,
 } from "./change-set/types.ts";
+export type { SellerAmazonAdsMcpLivePreflightInput } from "./connectors/amazon-ads-mcp/build-preflight.ts";
+export { buildSellerAmazonAdsMcpLivePreflight } from "./connectors/amazon-ads-mcp/build-preflight.ts";
+export {
+	inventorySellerAmazonAdsMcpCapabilities,
+	requireSellerAmazonAdsMcpReadCandidate,
+} from "./connectors/amazon-ads-mcp/capabilities.ts";
+export type {
+	SellerAmazonAdsMcpReadBinding,
+	SellerAmazonAdsMcpReadBindingInput,
+	SellerAmazonAdsMcpSemanticRead,
+} from "./connectors/amazon-ads-mcp/read-bindings.ts";
+export {
+	createSellerAmazonAdsMcpReadBinding,
+	verifySellerAmazonAdsMcpReadBinding,
+} from "./connectors/amazon-ads-mcp/read-bindings.ts";
+export { normalizeSellerAmazonAdsMcpSessionContext } from "./connectors/amazon-ads-mcp/session.ts";
+export { createSellerAmazonAdsMcpStateReader } from "./connectors/amazon-ads-mcp/state-reader.ts";
+export type {
+	SellerAmazonAdsMcpCapability,
+	SellerAmazonAdsMcpCapabilityClassification,
+	SellerAmazonAdsMcpCapabilityInventory,
+	SellerAmazonAdsMcpNormalizedSession,
+	SellerAmazonAdsMcpReadRequest,
+	SellerAmazonAdsMcpSessionContext,
+	SellerAmazonAdsMcpToolAnnotations,
+	SellerAmazonAdsMcpToolDescriptor,
+	SellerAmazonAdsMcpTransport,
+} from "./connectors/amazon-ads-mcp/types.ts";
 export { diagnosePpc } from "./diagnostics/diagnose-ppc.ts";
 export {
 	diagnoseProfitability,

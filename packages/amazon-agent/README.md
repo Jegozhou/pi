@@ -2,7 +2,7 @@
 
 A file-first Amazon seller decision engine built on Pi. It turns supported seller reports into deterministic metrics, evidence-backed findings, ranked actions, auditable Change Sets, host-confirmed human approval, deterministic execution plans, zero-write fake execution receipts, and a trusted live-preflight boundary for future Amazon Ads execution.
 
-This package is intentionally not an Amazon-themed chatbot. Numerical facts and state transitions are produced by deterministic TypeScript; the LLM chooses tools, interprets results, asks for missing seller inputs, and explains decisions. Trusted account identity, live account state, authorization proof, and future mutation execution stay outside model authority.
+This package is intentionally not an Amazon-themed chatbot. Numerical facts and state transitions are produced by deterministic TypeScript; the LLM chooses tools, interprets results, asks for missing seller inputs, and explains decisions. Trusted account identity, live account state, authorization proof, connector bindings, and future mutation execution stay outside model authority.
 
 ## Current scope
 
@@ -30,7 +30,17 @@ V1.2 adds the trusted boundary required before a real Amazon Ads adapter may exi
 - reserve execution identity only after trusted-state preflight is safe;
 - return `ready-for-live-adapter` only after authorization, state, and idempotency gates pass.
 
-V1.2 still performs **zero Amazon writes**. It contains no Amazon Ads mutation client, Seller Central mutation client, OAuth access/refresh token handling, or live executor. `ready-for-live-adapter` means only that deterministic safety prerequisites passed.
+V1.3 adds a host-controlled foundation for the official Amazon Ads MCP Server:
+
+- normalize an authenticated MCP session into the existing exact Amazon Ads account scope without accepting credential material;
+- inventory MCP capabilities while keeping read, mutation, and unknown descriptors non-authoritative;
+- pin host-approved semantic reads to an exact tool name, descriptor digest, account scope, and optional adapter version;
+- implement an MCP-backed `SellerExecutionStateReader` that exposes only trusted bid and negative-existence reads;
+- fail closed on session-scope drift, descriptor drift, malformed connector results, missing/duplicate bindings, or connector failure;
+- validate every binding required by a batch before any operation-level MCP read starts;
+- compose that trusted reader with the V1.2 signed authorization, full-batch preflight, and account-scoped idempotency gates.
+
+V1.3 still performs **zero Amazon writes**. It contains no generic model-facing MCP proxy, Amazon Ads MCP mutation invocation, direct Amazon Ads mutation HTTP client, Seller Central mutation client, or OAuth access/refresh-token storage. `ready-for-live-adapter` means only that deterministic safety prerequisites passed.
 
 ## Core pipeline
 
@@ -50,15 +60,19 @@ seller request
 → SellerExecutionPlan
 → V1.1 zero-write Dry Run / FakeAmazonAdsExecutor
 
-future-live boundary in V1.2:
+trusted connector boundary in V1.3:
 SellerExecutionPlan
-→ trusted host/connector account scope
-→ signed execution authorization over exact plan content
-→ trusted current-state read
-→ full-batch state preflight
+→ signed execution authorization over exact plan content + account scope
+→ trusted host Amazon Ads MCP session
+→ non-secret session identity normalization
+→ capability inventory / firewall
+→ host-approved semantic read bindings
+→ MCP-backed SellerExecutionStateReader
+→ batch-level connector/binding validation
+→ full-batch current-state preflight
 → account-scoped idempotency reservation
 → ready-for-live-adapter
-→ STOP: V1.2 performs no Amazon mutation
+→ STOP: V1.3 performs no Amazon mutation
 ```
 
 ## Inputs
@@ -89,15 +103,19 @@ V1.1 fake execution uses explicit caller-supplied local state. It is simulation 
 
 ### Trusted live-preflight inputs
 
-V1.2 does not accept model/user JSON and relabel it as trusted live state. A future authenticated host or connector must provide:
+V1.2 does not accept model/user JSON and relabel it as trusted live state. V1.3 adds the domain-side contract for a trusted host to supply Amazon Ads MCP state, but the host still owns the authenticated session and credentials.
 
-- an exact Amazon Ads profile ID;
+A V1.3 host integration must provide:
+
+- an authenticated `SellerAmazonAdsMcpTransport` session;
+- exact Amazon Ads profile ID;
 - marketplace ID;
 - region;
-- a trusted current-state reader backed by that authenticated account;
+- the current MCP tool catalog;
+- trusted host-approved semantic read bindings pinned to descriptor digests and account scope;
 - a durable idempotency implementation before production execution.
 
-The domain layer can then bind the exact execution plan to that account scope in a signed, time-limited authorization envelope.
+The domain layer never asks the LLM to provide OAuth credentials, trusted session identity, or arbitrary MCP tool names.
 
 ## Pi tools
 
@@ -116,7 +134,7 @@ The project-local Amazon extension currently exposes:
 - `amazon_build_execution_plan`
 - `amazon_fake_execute_plan`
 
-V1.2 trusted live-preflight is intentionally **not** exposed as a model-callable Pi tool. The current chat surface cannot make account identity or current Amazon state trustworthy simply because the model supplies them. The future live entrypoint belongs behind an authenticated connector/host boundary.
+V1.2/V1.3 trusted live-preflight is intentionally **not** exposed as a model-callable Pi tool. The current chat surface cannot make account identity, MCP capability bindings, or current Amazon state trustworthy simply because the model supplies them. The live entrypoint belongs behind an authenticated connector/host boundary.
 
 Use the project Skill at `.pi/skills/amazon-seller-agent.md` for the existing file-first and V1.1 workflows.
 
@@ -247,6 +265,51 @@ Every outcome reports `externalWritesPerformed: false`.
 
 See `docs/amazon-seller-agent-v1.2-live-preflight.md` for the full V1.2 trust contract.
 
+## V1.3 Amazon Ads MCP connector foundation
+
+V1.3 supplies a concrete trusted-host connector boundary for the V1.2 read contract without making MCP a model-owned tool surface.
+
+### Session identity
+
+`SellerAmazonAdsMcpTransport` provides only:
+
+```text
+getSessionContext()
+listTools()
+callReadTool()
+```
+
+There is no generic mutation method in the V1.3 transport contract.
+
+The normalized session contains only non-secret identity metadata. Required scope is `profileId + marketplaceId + region`. Secret-shaped connector fields are rejected instead of being copied into domain state.
+
+### Capability firewall
+
+Discovered tools are inventoried as `read-candidate`, `mutation-candidate`, or `unknown`. Classification never grants permission. Tool names and descriptions are untrusted metadata.
+
+Every tool descriptor is hashed. A host-approved semantic binding becomes invalid when its descriptor digest changes.
+
+### Semantic read bindings
+
+V1.3 supports exactly:
+
+- `read-target-bid`;
+- `read-negative-exact-existence`.
+
+A binding pins the semantic to one exact tool name, descriptor digest, account scope, and optional adapter version. It has its own binding digest for tamper detection.
+
+The project intentionally does not hardcode guessed official Amazon Ads MCP tool names or schemas. A trusted host must inspect the actual connected catalog before approving bindings.
+
+### MCP-backed state reader and batch gate
+
+`createSellerAmazonAdsMcpStateReader(...)` revalidates authenticated session scope, current descriptor digest, and exact binding before a read. Malformed or ambiguous connector data becomes `unavailable` instead of guessed state.
+
+`buildSellerAmazonAdsMcpLivePreflight(...)` adds a batch-level connector gate: every semantic read required by the execution plan must have one currently valid binding before operation-level MCP reads begin. If any required binding/session/catalog check fails, the full batch becomes `blocked-unavailable` before read calls and before idempotency reservation.
+
+After connector validation, it reuses the V1.2 signed authorization, stale-state, full-batch, and account-scoped idempotency semantics.
+
+See `docs/amazon-seller-agent-v1.3-ads-mcp-connector.md` for the complete V1.3 contract.
+
 ## LLM responsibility
 
 The LLM may:
@@ -256,7 +319,7 @@ The LLM may:
 - explain structured findings and evidence;
 - ask for missing seller targets/costs;
 - request that the host display the exact approval confirmation dialog;
-- explain execution-plan preconditions and fake receipts.
+- explain execution-plan preconditions, fake receipts, and trusted preflight outcomes.
 
 The LLM is not authoritative for:
 
@@ -268,6 +331,8 @@ The LLM is not authoritative for:
 - bid-policy math;
 - approval proof;
 - trusted Amazon account identity;
+- OAuth/session credentials;
+- trusted MCP tool catalog or semantic bindings;
 - trusted current account state;
 - production idempotency reservation;
 - Amazon account execution.
@@ -285,27 +350,38 @@ V1.2 adds focused coverage for:
 - 8 account-scoped idempotency cases including replay/conflict/account isolation;
 - 9 coordinator cases covering verification order, no reservation on blocked/no-op state, replay, conflict, and `ready-for-live-adapter`.
 
+V1.3 adds focused coverage for:
+
+- authenticated session identity and secret-shaped field rejection;
+- capability inventory/firewall and descriptor digests;
+- semantic read binding scope/digest/tamper enforcement;
+- MCP-backed bid and negative-existence reads;
+- session-scope mismatch, descriptor drift, malformed result, and connector exceptions;
+- batch-level binding validation before operation reads;
+- stale/unavailable/replay/conflict behavior through the V1.2 coordinator;
+- zero external writes.
+
 ## Safety contract
 
 Every mutation proposal preserves `humanApprovalRequired: true`.
 
-The system fails closed when identifiers, current values, targets, before/after states, report data, approval proof, account scope, execution authorization, trusted state, or idempotency identity are missing, invalid, ambiguous, stale, modified, or unavailable.
+The system fails closed when identifiers, current values, targets, before/after states, report data, approval proof, account scope, execution authorization, trusted state, MCP session identity, semantic binding, descriptor digest, or idempotency identity are missing, invalid, ambiguous, stale, modified, or unavailable.
 
-V1.2 contains no Amazon Ads/Seller Central mutation HTTP client, OAuth access token, refresh token, live mutation executor, or model-callable trusted-live tool. `ready-for-live-adapter` must never be described as executed, applied, synchronized, or successful in Amazon.
+V1.3 contains no Amazon Ads/Seller Central mutation HTTP client, Amazon Ads MCP mutation invocation, OAuth access token, refresh token, live mutation executor, generic model-facing MCP proxy, or model-callable trusted-live tool. `ready-for-live-adapter` must never be described as executed, applied, synchronized, or successful in Amazon.
 
 ## Current release limitations
 
-The current file-first operator still has explicit gaps that should not be hidden:
+The current operator still has explicit gaps that should not be hidden:
 
 - no verified XLSX adapter;
 - no persistent seller profile/store policy persistence;
-- no authenticated Amazon Ads connector/profile resolver;
+- no shipped production Amazon Ads MCP transport/session implementation; V1.3 defines and verifies the trusted host contract;
 - no real Amazon Ads/SP-API mutation executor;
 - no production durable/atomic idempotency store;
-- no authenticated live-state reader implementation;
+- no reviewed real-session semantic mutation bindings;
 - no retry/rate-limit layer, durable production execution receipts, or rollback/recovery engine;
 - no scheduled daily execution;
 - no web/WorkBuddy operational UI;
-- root monorepo CI may still be affected by the pre-existing upstream Pi core type error already documented in V1.0/V1.1; the dedicated Amazon release gate is the package-specific release signal.
+- root monorepo CI may still be affected by pre-existing upstream Pi core issues; the dedicated Amazon release gate is the package-specific release signal.
 
-A future V1.3 real adapter should not be added until OAuth/account scope is resolved outside model control, live state is re-read immediately before mutation, idempotency is durable/atomic, receipts are persisted, and retry/partial-failure/recovery semantics are explicitly designed and tested.
+A future mutation phase must not begin until the actual connected Amazon Ads MCP mutation catalog and schemas are captured from an approved partner session, exact semantic mutation bindings are reviewed, OAuth/session ownership stays outside model control, current state is re-read immediately before mutation, idempotency is durable/atomic, receipts are persisted, and retry/partial-failure/recovery semantics are explicitly designed and tested.
