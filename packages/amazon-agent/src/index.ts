@@ -111,6 +111,20 @@ export {
 	createSellerExecutionAuthorizationEnvelope,
 	verifySellerExecutionAuthorizationEnvelope,
 } from "./live-execution/authorization.ts";
+export type {
+	SellerExecutionStatePreflight,
+	SellerExecutionStatePreflightStatus,
+	SellerLiveOperationObservedState,
+	SellerLiveOperationPreflight,
+	SellerLiveOperationPreflightStatus,
+} from "./live-execution/preflight.ts";
+export { preflightSellerExecutionState } from "./live-execution/preflight.ts";
+export type {
+	SellerExecutionStateReader,
+	SellerTrustedBidState,
+	SellerTrustedNegativeExactState,
+	SellerTrustedOperationState,
+} from "./live-execution/state-reader.ts";
 export { calculateAdvertisingMetrics, safeRatio } from "./metrics/advertising.ts";
 export { calculateProfitabilityMetrics } from "./metrics/profitability.ts";
 export { DelimitedTextError, parseDelimitedText } from "./parsers/delimited.ts";
