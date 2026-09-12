@@ -71,9 +71,12 @@ export async function buildSellerAmazonAdsMcpLivePreflight(
 	try {
 		const session = normalizeSellerAmazonAdsMcpSessionContext(await input.transport.getSessionContext());
 		if (
-			sellerAmazonAdsAccountScopeKey(session.accountScope) !== sellerAmazonAdsAccountScopeKey(authorization.accountScope)
+			sellerAmazonAdsAccountScopeKey(session.accountScope) !==
+			sellerAmazonAdsAccountScopeKey(authorization.accountScope)
 		) {
-			throw new Error("Amazon Ads MCP authenticated session account scope does not match execution authorization scope");
+			throw new Error(
+				"Amazon Ads MCP authenticated session account scope does not match execution authorization scope",
+			);
 		}
 
 		const inventory = inventorySellerAmazonAdsMcpCapabilities(await input.transport.listTools());
