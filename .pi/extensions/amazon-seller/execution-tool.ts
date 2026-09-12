@@ -31,7 +31,7 @@ export function parseApprovalEnvelope(raw: string): SellerApprovalEnvelope {
 	return {
 		changeSet: parsed.changeSet as unknown as SellerChangeSet,
 		proof: {
-			algorithm: "hmac-shha256" === "hmac-sha256" ? "hmac-sha256" : "hmac-sha256",
+			algorithm: "hmac-sha256",
 			contentDigest: parsed.proof.contentDigest,
 			signature: parsed.proof.signature,
 		},
