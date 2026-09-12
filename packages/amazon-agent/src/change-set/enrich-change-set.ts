@@ -13,6 +13,16 @@ function nonEmpty(value: string | null | undefined): value is string {
 	return typeof value === "string" && value.trim().length > 0;
 }
 
+type ResolvableTargetSnapshotRow = NormalizedTargetSnapshotRow & {
+	campaignId: string;
+	adGroupId: string;
+	targetId: string;
+};
+
+function isResolvableTargetRow(row: NormalizedTargetSnapshotRow): row is ResolvableTargetSnapshotRow {
+	return nonEmpty(row.campaignId) && nonEmpty(row.adGroupId) && nonEmpty(row.targetId);
+}
+
 function cloneProposal(proposal: SellerChangeProposal): SellerChangeProposal {
 	return {
 		...proposal,
@@ -65,10 +75,8 @@ function targetStateKey(row: NormalizedTargetSnapshotRow): string {
 }
 
 function uniqueTarget(rows: readonly NormalizedTargetSnapshotRow[]): NormalizedTargetSnapshotRow | null | "ambiguous" {
-	const usable = rows.filter(
-		(row) => nonEmpty(row.campaignId) && nonEmpty(row.adGroupId) && nonEmpty(row.targetId),
-	);
-	const byTarget = new Map<string, NormalizedTargetSnapshotRow[]>();
+	const usable = rows.filter(isResolvableTargetRow);
+	const byTarget = new Map<string, ResolvableTargetSnapshotRow[]>();
 	for (const row of usable) {
 		const group = byTarget.get(row.targetId) ?? [];
 		group.push(row);
