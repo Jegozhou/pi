@@ -24,7 +24,9 @@ function normalizedKey(key: string): string {
 
 function assertNoSensitiveFields(value: unknown, path = "session"): void {
 	if (Array.isArray(value)) {
-		value.forEach((entry, index) => assertNoSensitiveFields(entry, `${path}[${index}]`));
+		for (const [index, entry] of value.entries()) {
+			assertNoSensitiveFields(entry, `${path}[${index}]`);
+		}
 		return;
 	}
 	if (value === null || typeof value !== "object") return;
