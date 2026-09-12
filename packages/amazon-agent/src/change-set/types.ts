@@ -4,6 +4,7 @@ import type { TargetSnapshotWarning } from "../types/targeting.ts";
 
 export type SellerChangeSetStatus = "draft" | "awaiting-approval" | "approved" | "rejected";
 export type SellerChangeProposalReadiness = "blocked" | "review-only" | "ready";
+export type SellerDecisionProvenance = "host-ui-confirmation" | "trusted-caller";
 export type SellerChangeOperation =
 	| "add-negative-exact"
 	| "set-bid"
@@ -33,6 +34,8 @@ export interface SellerChangeSetDecision {
 	outcome: "approved" | "rejected";
 	actor: string;
 	decidedAt: string;
+	provenance?: SellerDecisionProvenance;
+	contentDigest?: string;
 }
 
 export interface SellerChangeSet {
@@ -48,6 +51,7 @@ export interface SellerChangeSetDecisionInput {
 	decision: "approve" | "reject";
 	actor: string;
 	decidedAt: string;
+	provenance?: SellerDecisionProvenance;
 }
 
 export interface SellerChangeSetResolverDiagnostics {
