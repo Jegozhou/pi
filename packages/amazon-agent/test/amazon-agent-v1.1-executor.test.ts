@@ -134,4 +134,50 @@ describe("Amazon Seller Agent V1.1 fake executor", () => {
 		await createFakeAmazonAdsExecutor(fakeState).execute(executionPlan);
 		expect(executionPlan).toEqual(before);
 	});
+
+	it("replays the prior receipt for the same plan without applying mutations twice", async () => {
+		const fakeState = state();
+		const executionPlan = plan("changeset:replay");
+		const executor = createFakeAmazonAdsExecutor(fakeState);
+		const first = await executor.execute(executionPlan);
+		const stateAfterFirst = {
+			bid: fakeState.bidsByTargetId.get("3001"),
+			negatives: [...fakeState.negativeExactByScope],
+		};
+		const second = await executor.execute(executionPlan);
+
+		expect(second).toEqual(first);
+		expect(fakeState.processedPlanKeys.get(executionPlan.idempotencyKey)).toEqual(first);
+		expect(fakeState.bidsByTargetId.get("3001")).toBe(stateAfterFirst.bid);
+		expect([...fakeState.negativeExactByScope]).toEqual(stateAfterFirst.negatives);
+	});
+
+	it("marks a forced first-operation failure and skips all later operations", async () => {
+		const fakeState = state();
+		const executionPlan = plan("changeset:fail-first");
+		const receipt = await createFakeAmazonAdsExecutor(fakeState, {
+			failProposalIds: new Set(["change:bid"]),
+		}).execute(executionPlan);
+
+		expect(receipt.operations.map((operation) => operation.status)).toEqual([
+			"simulated-failure",
+			"skipped-after-failure",
+		]);
+		expect(fakeState.bidsByTargetId.get("3001")).toBe(1.2);
+		expect(fakeState.negativeExactByScope.size).toBe(0);
+		expect(receipt.externalWritesPerformed).toBe(false);
+	});
+
+	it("keeps already-applied fake mutations explicit when a later operation fails", async () => {
+		const fakeState = state();
+		const executionPlan = plan("changeset:partial-failure");
+		const receipt = await createFakeAmazonAdsExecutor(fakeState, {
+			failProposalIds: new Set(["change:negative"]),
+		}).execute(executionPlan);
+
+		expect(receipt.operations.map((operation) => operation.status)).toEqual(["applied", "simulated-failure"]);
+		expect(fakeState.bidsByTargetId.get("3001")).toBe(0.96);
+		expect(fakeState.negativeExactByScope.size).toBe(0);
+		expect(receipt.externalWritesPerformed).toBe(false);
+	});
 });
