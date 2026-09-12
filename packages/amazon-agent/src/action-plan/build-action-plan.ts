@@ -16,39 +16,23 @@ interface RankedCandidate {
 	item: Omit<SellerActionPlanItem, "rank">;
 }
 
-function evidenceLocation(evidence: Array<{ sourceFile: string; sourceRow: number }>): {
-	file: string;
-	row: number;
-} {
+function evidenceLocation(evidence: Array<{ sourceFile: string; sourceRow: number }>): { file: string; row: number } {
 	const first = evidence[0];
 	return first ? { file: first.sourceFile, row: first.sourceRow } : { file: "", row: Number.MAX_SAFE_INTEGER };
 }
 
 function ppcRank(finding: Finding): { score: number; stage: SellerActionStage } {
 	switch (finding.category) {
-		case "waste":
-			return { score: 400, stage: "stop-loss" };
-		case "bid-down":
-			return { score: 300, stage: "optimize" };
-		case "migration":
-			return { score: 200, stage: "optimize" };
-		case "scale":
-			return { score: 100, stage: "grow" };
+		case "waste": return { score: 400, stage: "stop-loss" };
+		case "bid-down": return { score: 300, stage: "optimize" };
+		case "migration": return { score: 200, stage: "optimize" };
+		case "scale": return { score: 100, stage: "grow" };
 	}
 }
 
-function profitabilityRank(finding: ProfitabilityFinding): {
-	score: number;
-	stage: SellerActionStage;
-} {
-	if (finding.ruleId === "profit.negative-known-contribution.v1") {
-		return { score: 500, stage: "stop-loss" };
-	}
-
-	return {
-		score: finding.priority === "high" ? 310 : 290,
-		stage: "optimize",
-	};
+function profitabilityRank(finding: ProfitabilityFinding): { score: number; stage: SellerActionStage } {
+	if (finding.ruleId === "profit.negative-known-contribution.v1") return { score: 500, stage: "stop-loss" };
+	return { score: finding.priority === "high" ? 310 : 290, stage: "optimize" };
 }
 
 function createItem(options: {
@@ -58,6 +42,7 @@ function createItem(options: {
 	finding: Finding | ProfitabilityFinding;
 }): Omit<SellerActionPlanItem, "rank"> {
 	const { finding } = options;
+	const context = "context" in finding ? finding.context : undefined;
 	return {
 		id: `action:${options.source}:${finding.id}`,
 		source: options.source,
@@ -66,11 +51,9 @@ function createItem(options: {
 		confidence: finding.confidence,
 		dataQuality: options.dataQuality,
 		entity: finding.entity,
+		...(context ? { context: { ...context } } : {}),
 		rationale: finding.rationale,
-		recommendedAction: {
-			type: finding.recommendedAction.type,
-			summary: finding.recommendedAction.summary,
-		},
+		recommendedAction: { type: finding.recommendedAction.type, summary: finding.recommendedAction.summary },
 		evidence: finding.evidence.map((evidence) => ({ ...evidence })),
 		sourceFindingId: finding.id,
 		sourceRuleId: finding.ruleId,
@@ -79,15 +62,12 @@ function createItem(options: {
 }
 
 function validateLimit(limit: number): void {
-	if (!Number.isInteger(limit) || limit <= 0) {
-		throw new RangeError("limit must be a positive integer");
-	}
+	if (!Number.isInteger(limit) || limit <= 0) throw new RangeError("limit must be a positive integer");
 }
 
 export function buildSellerActionPlan(input: SellerActionPlanInput): SellerActionPlan {
 	const limit = input.limit ?? DEFAULT_LIMIT;
 	validateLimit(limit);
-
 	const candidates: RankedCandidate[] = [];
 	const seen = new Set<string>();
 
@@ -96,15 +76,7 @@ export function buildSellerActionPlan(input: SellerActionPlanInput): SellerActio
 		if (seen.has(dedupeKey)) continue;
 		seen.add(dedupeKey);
 		const rank = ppcRank(finding);
-		candidates.push({
-			score: rank.score,
-			item: createItem({
-				source: "ppc",
-				stage: rank.stage,
-				dataQuality: "not-applicable",
-				finding,
-			}),
-		});
+		candidates.push({ score: rank.score, item: createItem({ source: "ppc", stage: rank.stage, dataQuality: "not-applicable", finding }) });
 	}
 
 	for (const finding of input.profitabilityFindings) {
@@ -112,15 +84,7 @@ export function buildSellerActionPlan(input: SellerActionPlanInput): SellerActio
 		if (seen.has(dedupeKey)) continue;
 		seen.add(dedupeKey);
 		const rank = profitabilityRank(finding);
-		candidates.push({
-			score: rank.score,
-			item: createItem({
-				source: "profitability",
-				stage: rank.stage,
-				dataQuality: finding.dataQuality,
-				finding,
-			}),
-		});
+		candidates.push({ score: rank.score, item: createItem({ source: "profitability", stage: rank.stage, dataQuality: finding.dataQuality, finding }) });
 	}
 
 	candidates.sort((left, right) => {
@@ -133,12 +97,6 @@ export function buildSellerActionPlan(input: SellerActionPlanInput): SellerActio
 		return left.item.sourceFindingId.localeCompare(right.item.sourceFindingId);
 	});
 
-	const selected = candidates.slice(0, limit);
-	const items = selected.map((candidate, index) => ({ ...candidate.item, rank: index + 1 }));
-
-	return {
-		totalFindings: candidates.length,
-		returnedItems: items.length,
-		items,
-	};
+	const items = candidates.slice(0, limit).map((candidate, index) => ({ ...candidate.item, rank: index + 1 }));
+	return { totalFindings: candidates.length, returnedItems: items.length, items };
 }
