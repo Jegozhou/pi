@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
 	createInMemorySellerExecutionIdempotencyStore,
-	sellerExecutionIdempotencyStorageKey,
 	type SellerAmazonAdsAccountScope,
 	type SellerExecutionIdempotencyReservation,
+	sellerExecutionIdempotencyStorageKey,
 } from "../src/index.ts";
 
 function scope(profileId = "9876543210"): SellerAmazonAdsAccountScope {
