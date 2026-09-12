@@ -70,7 +70,7 @@ This classification is descriptive only.
 
 Tool names and descriptions never grant authority. A tool called `readBid`, `updateCampaign`, or anything else is still untrusted connector metadata until the host has explicitly approved a semantic binding. Mutation and unknown candidates cannot pass through the V1.3 read firewall.
 
-Every descriptor receives a deterministic SHA-256 digest. Descriptor drift invalidates an existing semantic binding until the host reviews and re-approves the changed contract.
+Every complete JSON-compatible descriptor receives a deterministic SHA-256 digest, including metadata that the domain does not otherwise interpret. Descriptor drift invalidates an existing semantic binding until the host reviews and re-approves the changed contract.
 
 ## Trusted semantic read bindings
 
@@ -107,6 +107,8 @@ For every state read it:
 6. calls only `callReadTool(...)`;
 7. strictly validates the returned shape;
 8. converts connector, permission, malformed-result, ambiguous-result, scope, or descriptor failures into explicit `unavailable` state.
+
+`SellerAmazonAdsMcpReadRequest.arguments` and the accepted `{ currentBid }` / `{ exists }` responses are **normalized host-adapter contracts**, not claims about the official Amazon Ads MCP wire schema. A production host transport must inspect the exact bound descriptor, map these normalized domain fields to that reviewed tool's actual input schema, call the bound read tool, and normalize its actual output back into the strict domain shape. If the official descriptor changes, the descriptor digest changes and the binding is invalidated before the adapter may be used again.
 
 A bid read is accepted only when `currentBid` is a finite positive number. A negative-exact existence read is accepted only when `exists` is a boolean. Arrays, missing fields, strings pretending to be numbers/booleans, zero/negative bids, and other ambiguous values are rejected.
 
@@ -200,9 +202,9 @@ Before production mutation, the project also still needs a durable atomic idempo
 The V1.3 focused suites cover:
 
 - authenticated/non-secret session normalization;
-- invalid/secret-shaped session rejection;
+- invalid/secret-shaped session rejection, including prefixed/nested token and secret field names;
 - capability read/mutation/unknown classification;
-- descriptor immutability and digest drift;
+- complete raw descriptor preservation and digest drift, including unmodeled schema/annotation metadata;
 - trusted semantic binding creation and tamper detection;
 - exact account-scope binding;
 - bid and negative-existence MCP state reads;
