@@ -163,4 +163,37 @@ describe("Amazon Seller Agent V1.1 host execution tools", () => {
 		expect(output.receipt.externalWritesPerformed).toBe(false);
 		expect(output.receipt.operations).toEqual([expect.objectContaining({ operation: "set-bid", status: "applied" })]);
 	});
+
+	it("replays the same fake execution receipt when returned fake state is supplied again", async () => {
+		const tools = registeredTools();
+		const envelope = await approvedEnvelopeFromHost(tools);
+		const controller = new AbortController();
+		const planResult = await requireTool(tools, "amazon_build_execution_plan").execute(
+			"plan-call",
+			{ approvalEnvelopeJson: JSON.stringify(envelope), expectedVersion: 4 },
+			controller.signal,
+		);
+		const plan = planResult.details?.result as SellerExecutionPlan;
+		const fakeTool = requireTool(tools, "amazon_fake_execute_plan");
+		const firstResult = await fakeTool.execute(
+			"fake-first",
+			{
+				planJson: JSON.stringify(plan),
+				fakeStateJson: JSON.stringify({ bidsByTargetId: { "3001": 1.2 }, negativeExactByScope: [] }),
+			},
+			controller.signal,
+		);
+		const first = firstResult.details?.result as {
+			receipt: SellerExecutionReceipt;
+			fakeState: Record<string, unknown>;
+		};
+		const secondResult = await fakeTool.execute(
+			"fake-second",
+			{ planJson: JSON.stringify(plan), fakeStateJson: JSON.stringify(first.fakeState) },
+			controller.signal,
+		);
+		const second = secondResult.details?.result as { receipt: SellerExecutionReceipt };
+
+		expect(second.receipt).toEqual(first.receipt);
+	});
 });
