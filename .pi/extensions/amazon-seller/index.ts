@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
@@ -11,11 +12,12 @@ import {
 	requestSellerChangeSetApproval,
 	type PpcPolicyOverrides,
 	type SellerActionPlan,
+	type SellerApprovalSecret,
 	type SellerChangeSet,
 } from "../../../packages/amazon-agent/src/index.ts";
-import { amazonApprovalSecret } from "./approval-session.ts";
 import { registerAmazonBidPolicyTool } from "./bid-policy-tool.ts";
 import { registerAmazonEnrichmentTool } from "./enrichment-tool.ts";
+import { registerAmazonExecutionDryRunTool } from "./execution-tool.ts";
 import { readAmazonReportFile } from "./file-input.ts";
 
 function parseJsonObject<T>(raw: string, label: string): T {
@@ -237,61 +239,65 @@ const requestChangeSetApprovalTool = defineTool({
 	},
 });
 
-const decideChangeSetTool = defineTool({
-	name: "amazon_decide_change_set",
-	label: "Confirm Amazon Change Set Decision",
-	description:
-		"Request a host UI confirmation for an awaiting-approval Change Set. The model can request this tool, but approval or rejection is recorded only after a human confirms the exact Change Set in the host dialog. Approved results are returned as signed approval envelopes for dry-run verification.",
-	parameters: Type.Object({
-		changeSetJson: Type.String({ description: "JSON object for the exact SellerChangeSet in awaiting-approval status" }),
-		decision: Type.Union([Type.Literal("approve"), Type.Literal("reject")]),
-		actor: Type.String({ description: "Display label for the human decision maker; this label is not approval proof" }),
-	}),
-	async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-		if (!ctx?.hasUI) {
-			throw new Error("Amazon Change Set decisions require a dialog-capable host UI for human confirmation");
-		}
-		const changeSet = parseJsonObject<SellerChangeSet>(params.changeSetJson, "changeSetJson");
-		const actor = params.actor.trim();
-		if (!actor) throw new Error("actor must be a non-empty display label");
-		const confirmed = await ctx.ui.confirm(
-			params.decision === "approve" ? "Approve Amazon Change Set?" : "Reject Amazon Change Set?",
-			decisionConfirmationMessage(changeSet, params.decision, actor),
-			{ signal },
-		);
-		if (!confirmed) {
-			throw new Error("Human did not confirm the Amazon Change Set decision");
-		}
-		const result = decideSellerChangeSet(changeSet, {
-			decision: params.decision,
-			actor,
-			decidedAt: new Date().toISOString(),
-			provenance: "host-ui-confirmation",
-		});
+function createDecideChangeSetTool(approvalSecret: SellerApprovalSecret) {
+	return defineTool({
+		name: "amazon_decide_change_set",
+		label: "Confirm Amazon Change Set Decision",
+		description:
+			"Request a host UI confirmation for an awaiting-approval Change Set. The model can request this tool, but approval or rejection is recorded only after a human confirms the exact Change Set in the host dialog. Approved results are returned as signed approval envelopes for dry-run verification.",
+		parameters: Type.Object({
+			changeSetJson: Type.String({ description: "JSON object for the exact SellerChangeSet in awaiting-approval status" }),
+			decision: Type.Union([Type.Literal("approve"), Type.Literal("reject")]),
+			actor: Type.String({ description: "Display label for the human decision maker; this label is not approval proof" }),
+		}),
+		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+			if (!ctx?.hasUI) {
+				throw new Error("Amazon Change Set decisions require a dialog-capable host UI for human confirmation");
+			}
+			const changeSet = parseJsonObject<SellerChangeSet>(params.changeSetJson, "changeSetJson");
+			const actor = params.actor.trim();
+			if (!actor) throw new Error("actor must be a non-empty display label");
+			const confirmed = await ctx.ui.confirm(
+				params.decision === "approve" ? "Approve Amazon Change Set?" : "Reject Amazon Change Set?",
+				decisionConfirmationMessage(changeSet, params.decision, actor),
+				{ signal },
+			);
+			if (!confirmed) {
+				throw new Error("Human did not confirm the Amazon Change Set decision");
+			}
+			const result = decideSellerChangeSet(changeSet, {
+				decision: params.decision,
+				actor,
+				decidedAt: new Date().toISOString(),
+				provenance: "host-ui-confirmation",
+			});
 
-		if (params.decision === "approve") {
-			const approvalEnvelope = createSellerApprovalEnvelope(result, amazonApprovalSecret);
+			if (params.decision === "approve") {
+				const approvalEnvelope = createSellerApprovalEnvelope(result, approvalSecret);
+				return {
+					content: [{ type: "text", text: JSON.stringify(approvalEnvelope, null, 2) }],
+					details: { result: approvalEnvelope },
+				};
+			}
+
 			return {
-				content: [{ type: "text", text: JSON.stringify(approvalEnvelope, null, 2) }],
-				details: { result: approvalEnvelope },
+				content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+				details: { result },
 			};
-		}
-
-		return {
-			content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-			details: { result },
-		};
-	},
-});
+		},
+	});
+}
 
 export default function (pi: ExtensionAPI) {
+	const approvalSecret: SellerApprovalSecret = randomBytes(32);
 	pi.registerTool(inspectReportTool);
 	pi.registerTool(diagnosePpcTool);
 	pi.registerTool(diagnoseProfitTool);
 	pi.registerTool(buildActionPlanTool);
 	pi.registerTool(buildChangeSetTool);
 	pi.registerTool(requestChangeSetApprovalTool);
-	pi.registerTool(decideChangeSetTool);
+	pi.registerTool(createDecideChangeSetTool(approvalSecret));
 	registerAmazonEnrichmentTool(pi);
 	registerAmazonBidPolicyTool(pi);
+	registerAmazonExecutionDryRunTool(pi, approvalSecret);
 }
