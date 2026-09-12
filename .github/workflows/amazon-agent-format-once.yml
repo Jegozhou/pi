@@ -1,0 +1,45 @@
+name: Amazon Agent Format Once
+
+on:
+  push:
+    branches:
+      - feat/amazon-seller-agent
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/amazon-seller-agent
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.19.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Format Amazon Seller Agent files
+        run: npx biome check --write .pi/extensions/amazon-seller packages/amazon-agent/src packages/amazon-agent/test
+
+      - name: Commit formatting-only changes
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .pi/extensions/amazon-seller packages/amazon-agent/src packages/amazon-agent/test
+          git commit -m "style(agent): format amazon seller agent files"
+          git push origin HEAD:feat/amazon-seller-agent
