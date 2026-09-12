@@ -52,6 +52,16 @@ export type {
 	RecommendedAction,
 	RecommendedActionType,
 } from "./diagnostics/types.ts";
+export { buildSellerExecutionDryRun } from "./execution/build-dry-run.ts";
+export type {
+	SellerBidDryRunOperation,
+	SellerDryRunOperation,
+	SellerExecutionCheck,
+	SellerExecutionDryRun,
+	SellerExecutionDryRunOptions,
+	SellerExecutionMode,
+	SellerNegativeExactDryRunOperation,
+} from "./execution/types.ts";
 export { calculateAdvertisingMetrics, safeRatio } from "./metrics/advertising.ts";
 export { calculateProfitabilityMetrics } from "./metrics/profitability.ts";
 export { DelimitedTextError, parseDelimitedText } from "./parsers/delimited.ts";
