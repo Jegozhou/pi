@@ -8,6 +8,16 @@ export type {
 	SellerActionSource,
 	SellerActionStage,
 } from "./action-plan/types.ts";
+export {
+	computeSellerChangeSetContentDigest,
+	createSellerApprovalEnvelope,
+	verifySellerApprovalEnvelope,
+} from "./approval/approval-envelope.ts";
+export type {
+	SellerApprovalEnvelope,
+	SellerApprovalProof,
+	SellerApprovalSecret,
+} from "./approval/approval-envelope.ts";
 export { applyBidPolicyToChangeSet } from "./bid-policy/apply-bid-policy.ts";
 export { DEFAULT_BID_POLICY, simulateBidChange } from "./bid-policy/simulate-bid.ts";
 export type {
@@ -33,6 +43,7 @@ export type {
 	SellerChangeSetInput,
 	SellerChangeSetResolverDiagnostics,
 	SellerChangeSetStatus,
+	SellerDecisionProvenance,
 } from "./change-set/types.ts";
 export { diagnosePpc } from "./diagnostics/diagnose-ppc.ts";
 export {
