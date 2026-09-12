@@ -4,7 +4,7 @@ import {
 	buildSellerExecutionPlan,
 	type SellerApprovalSecret,
 } from "../../../packages/amazon-agent/src/index.ts";
-import { parseApprovalEnvelope } from "./execution-tool.ts";
+import { parseApprovalEnvelope } from "./approval-envelope-input.ts";
 
 function createExecutionPlanTool(approvalSecret: SellerApprovalSecret) {
 	return defineTool({
