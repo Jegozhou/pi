@@ -64,6 +64,15 @@ export type {
 	RecommendedActionType,
 } from "./diagnostics/types.ts";
 export { buildSellerExecutionDryRun } from "./execution/build-dry-run.ts";
+export { buildSellerExecutionPlan } from "./execution/build-plan.ts";
+export type {
+	SellerBidExecutionOperation,
+	SellerExecutionOperation,
+	SellerExecutionPlan,
+	SellerExecutionPlanApproval,
+	SellerExecutionPlanOptions,
+	SellerNegativeExactExecutionOperation,
+} from "./execution/plan-types.ts";
 export type {
 	SellerBidDryRunOperation,
 	SellerDryRunOperation,
