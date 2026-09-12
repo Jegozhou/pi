@@ -31,6 +31,8 @@ export interface SellerAmazonAdsMcpLivePreflightInput {
 	now?: string;
 }
 
+type ConnectorPreflightStage = "session-validation" | "capability-catalog-validation" | "semantic-binding-validation";
+
 function semanticForOperation(operation: SellerExecutionOperation): SellerAmazonAdsMcpSemanticRead {
 	return operation.operation === "set-bid" ? "read-target-bid" : "read-negative-exact-existence";
 }
@@ -46,7 +48,8 @@ function exactBinding(
 	return matches[0]!;
 }
 
-function unavailableStateReader(reason: string): SellerExecutionStateReader {
+function unavailableStateReader(stage: ConnectorPreflightStage): SellerExecutionStateReader {
+	const reason = `Amazon Ads MCP connector preflight unavailable: ${stage}`;
 	return {
 		async readOperationState(_accountScope, operation) {
 			return operation.operation === "set-bid"
@@ -68,6 +71,7 @@ export async function buildSellerAmazonAdsMcpLivePreflight(
 	);
 
 	let stateReader: SellerExecutionStateReader;
+	let stage: ConnectorPreflightStage = "session-validation";
 	try {
 		const session = normalizeSellerAmazonAdsMcpSessionContext(await input.transport.getSessionContext());
 		if (
@@ -79,16 +83,18 @@ export async function buildSellerAmazonAdsMcpLivePreflight(
 			);
 		}
 
+		stage = "capability-catalog-validation";
 		const inventory = inventorySellerAmazonAdsMcpCapabilities(await input.transport.listTools());
+
+		stage = "semantic-binding-validation";
 		const requiredSemantics = new Set(input.plan.operations.map(semanticForOperation));
 		for (const semantic of requiredSemantics) {
 			const binding = exactBinding(input.bindings, semantic);
 			verifySellerAmazonAdsMcpReadBinding(binding, inventory, authorization.accountScope);
 		}
 		stateReader = createSellerAmazonAdsMcpStateReader(input.transport, input.bindings);
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		stateReader = unavailableStateReader(`Amazon Ads MCP connector preflight unavailable: ${message}`);
+	} catch {
+		stateReader = unavailableStateReader(stage);
 	}
 
 	return buildSellerLiveExecutionPreflight(
