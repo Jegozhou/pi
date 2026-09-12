@@ -34,7 +34,9 @@ function canonicalize(value: unknown, seen = new WeakSet<object>()): unknown {
 }
 
 function descriptorDigest(descriptor: SellerAmazonAdsMcpToolDescriptor): string {
-	return createHash("sha256").update(JSON.stringify(canonicalize(descriptor))).digest("hex");
+	return createHash("sha256")
+		.update(JSON.stringify(canonicalize(descriptor)))
+		.digest("hex");
 }
 
 function assertOptionalBoolean(value: unknown, label: string): void {
