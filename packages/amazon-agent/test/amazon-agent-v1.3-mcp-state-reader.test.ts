@@ -78,11 +78,13 @@ const negativeOperation: SellerExecutionOperation = {
 	idempotencyKey: "op:negative",
 };
 
-function transport(options: {
-	session?: unknown;
-	tools?: SellerAmazonAdsMcpToolDescriptor[];
-	call?: (request: SellerAmazonAdsMcpReadRequest) => Promise<unknown>;
-} = {}): SellerAmazonAdsMcpTransport {
+function transport(
+	options: {
+		session?: unknown;
+		tools?: SellerAmazonAdsMcpToolDescriptor[];
+		call?: (request: SellerAmazonAdsMcpReadRequest) => Promise<unknown>;
+	} = {},
+): SellerAmazonAdsMcpTransport {
 	return {
 		name: "synthetic-amazon-ads-mcp",
 		async getSessionContext() {
@@ -151,7 +153,12 @@ describe("Amazon Seller Agent V1.3 MCP-backed trusted state reader", () => {
 		let calls = 0;
 		const reader = createSellerAmazonAdsMcpStateReader(
 			transport({
-				session: { authenticated: true, profileId: "other-profile", marketplaceId: scope.marketplaceId, region: "NA" },
+				session: {
+					authenticated: true,
+					profileId: "other-profile",
+					marketplaceId: scope.marketplaceId,
+					region: "NA",
+				},
 				call: async () => {
 					calls += 1;
 					return { currentBid: 1.2 };
@@ -186,21 +193,21 @@ describe("Amazon Seller Agent V1.3 MCP-backed trusted state reader", () => {
 	});
 
 	it("converts malformed or ambiguous connector results to unavailable state", async () => {
-		for (const payload of [{}, { currentBid: 0 }, { currentBid: -1 }, { currentBid: "1.20" }, [{ currentBid: 1.2 }]]) {
-			const reader = createSellerAmazonAdsMcpStateReader(
-				transport({ call: async () => payload }),
-				bindings(),
-			);
+		for (const payload of [
+			{},
+			{ currentBid: 0 },
+			{ currentBid: -1 },
+			{ currentBid: "1.20" },
+			[{ currentBid: 1.2 }],
+		]) {
+			const reader = createSellerAmazonAdsMcpStateReader(transport({ call: async () => payload }), bindings());
 			expect(await reader.readOperationState(scope, bidOperation)).toMatchObject({
 				operation: "set-bid",
 				status: "unavailable",
 			});
 		}
 		for (const payload of [{}, { exists: "false" }, [{ exists: false }]]) {
-			const reader = createSellerAmazonAdsMcpStateReader(
-				transport({ call: async () => payload }),
-				bindings(),
-			);
+			const reader = createSellerAmazonAdsMcpStateReader(transport({ call: async () => payload }), bindings());
 			expect(await reader.readOperationState(scope, negativeOperation)).toMatchObject({
 				operation: "add-negative-exact",
 				status: "unavailable",
