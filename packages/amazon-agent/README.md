@@ -1,19 +1,25 @@
 # Amazon Seller Agent
 
-A file-first Amazon seller decision engine built on Pi. It turns supported seller reports into deterministic metrics, evidence-backed findings, ranked actions, auditable Change Sets, host-confirmed human approval, and zero-write execution dry runs.
+A file-first Amazon seller decision engine built on Pi. It turns supported seller reports into deterministic metrics, evidence-backed findings, ranked actions, auditable Change Sets, host-confirmed human approval, signed execution plans, and zero-external-write fake execution receipts.
 
 This package is intentionally not an Amazon-themed chatbot. Numerical facts and state transitions are produced by deterministic TypeScript; the LLM chooses tools, interprets results, asks for missing seller inputs, and explains decisions.
 
-## V1.0 scope
+## Current scope
 
-V1.0 supports two core workflows:
+The merged V1.0 baseline supports two core workflows:
 
 - Sponsored Products PPC diagnosis from Search Term reports.
 - ASIN/SKU known-contribution profitability diagnosis from seller-provided cost data.
 
-The pipeline can also resolve local Amazon Ads target identity from a supplied target snapshot, simulate guarded bid reductions, prepare Change Sets, request host-confirmed approval/rejection, and build an execution dry run from a signed approval envelope.
+V1.1 adds an execution safety layer after approval:
 
-V1.0 does **not** connect to Amazon Ads or Seller Central, store Amazon credentials, or write account changes. `approved` means the host UI recorded a human decision for an exact sealed Change Set. `dry-run` means no write occurred.
+- compile a signed approval envelope into a deterministic `SellerExecutionPlan`;
+- attach exact stale-state preconditions and deterministic idempotency keys;
+- execute only against caller-supplied in-memory fake Amazon Ads state;
+- return explicit operation receipts for applied fake state, stale state, duplicates, simulated failures, and skipped operations;
+- keep `externalWritesPerformed: false` for every fake execution receipt.
+
+V1.1 still does **not** connect to Amazon Ads or Seller Central, store Amazon credentials, or write account changes. `approved` means the host UI recorded a human decision for an exact sealed Change Set. A fake receipt status of `applied` means only that the local fake state changed.
 
 ## Core pipeline
 
@@ -30,7 +36,9 @@ seller request
 → awaiting approval
 → host UI human confirmation
 → signed approval envelope
-→ execution Dry Run
+→ execution Dry Run or deterministic Execution Plan
+→ FakeAmazonAdsExecutor
+→ explicit zero-external-write receipt
 ```
 
 ## Inputs
@@ -53,11 +61,26 @@ For account-object resolution provide non-empty campaign name + ID and ad group 
 
 Blank IDs are never considered valid identity. If duplicate rows for one target ID disagree on scope, targeting, match type, bid, or state, resolution fails ambiguous instead of choosing the last row.
 
-CSV and TSV are the current first-class file formats. XLSX is not part of the verified V1.0 release candidate yet.
+CSV and TSV are the current first-class file formats. XLSX is not part of the verified release yet.
+
+### Fake execution state
+
+V1.1 fake execution uses explicit caller-supplied local state. A Pi tool input can look like:
+
+```json
+{
+  "bidsByTargetId": {
+    "3001": 1.2
+  },
+  "negativeExactByScope": []
+}
+```
+
+This is simulation state only. It is never fetched from or synchronized with Amazon.
 
 ## Pi tools
 
-The project-local Amazon extension currently exposes tools for:
+The project-local Amazon extension exposes:
 
 - `amazon_inspect_report`
 - `amazon_diagnose_ppc`
@@ -69,12 +92,14 @@ The project-local Amazon extension currently exposes tools for:
 - `amazon_request_change_set_approval`
 - `amazon_decide_change_set`
 - `amazon_build_execution_dry_run`
+- `amazon_build_execution_plan`
+- `amazon_fake_execute_plan`
 
 Use the project Skill at `.pi/skills/amazon-seller-agent.md` to teach the model when to call each tool and where the safety boundaries are.
 
 ## Deterministic bid proposal
 
-For a high-ACOS bid-down candidate, V1.0 uses an explicit product policy:
+For a high-ACOS bid-down candidate, the current product policy is:
 
 ```text
 rawBid = currentBid × targetACOS ÷ observedACOS
@@ -101,7 +126,7 @@ The proposal still requires host-confirmed human approval.
 
 `amazon_decide_change_set` is model-callable only as a request to open the Pi host confirmation dialog. The tool itself requires a dialog-capable host. The human sees the exact Change Set ID/version and each proposal's before/after state and must click confirm before an approval or rejection is recorded.
 
-A conversational “approve” and the model-provided `actor` label are not approval proof.
+A conversational “approve” and a model-provided actor label are not approval proof.
 
 For an approval, the system:
 
@@ -110,9 +135,40 @@ For an approval, the system:
 3. signs the approval with an ephemeral per-extension HMAC key;
 4. returns a signed approval envelope.
 
-`amazon_build_execution_dry_run` accepts that signed envelope, not a bare approved Change Set. Any post-approval edit to proposal scope, target IDs, before/after values, decision content, digest, or signature fails verification.
+`amazon_build_execution_dry_run` and `amazon_build_execution_plan` accept that signed envelope, not a bare approved Change Set. Any post-approval edit to proposal scope, target IDs, before/after values, decision content, digest, or signature fails verification.
 
 The signing key is intentionally ephemeral. An extension reload/process restart requires fresh human approval rather than replaying an unverifiable old envelope.
+
+## Execution plan and idempotency
+
+`amazon_build_execution_plan` reuses the same signed-envelope verification and operation validation as the zero-write dry-run boundary.
+
+Supported plan mutations are currently:
+
+- `set-bid`
+- `add-negative-exact`
+
+A set-bid operation contains an exact `expectedCurrentBid` precondition. An add-negative-exact operation carries the exact campaign/ad-group scope and negative term.
+
+Plan and operation idempotency keys are derived deterministically from the exact approved content. If separately approved mutation content changes, the keys change too.
+
+The fake adapter stores prior receipts by plan key in caller-owned state. Replaying the same plan returns the prior receipt instead of applying fake state changes twice.
+
+## Fake execution receipts
+
+`amazon_fake_execute_plan` applies the plan only to in-memory fake state and returns `externalWritesPerformed: false`.
+
+Operation statuses are explicit:
+
+- `applied`: applied to fake in-memory state only;
+- `blocked-stale`: current fake state did not match the approved precondition;
+- `already-applied`: the desired fake end-state already existed;
+- `simulated-failure`: a forced fake failure used to test failure handling;
+- `skipped-after-failure`: a later operation was not attempted after a prior simulated failure.
+
+Partial fake execution is preserved operation-by-operation rather than compressed into an overall success boolean.
+
+See `docs/amazon-seller-agent-v1.1-execution.md` for the full execution-safety contract.
 
 ## LLM responsibility
 
@@ -122,7 +178,8 @@ The LLM may:
 - choose and sequence Amazon tools;
 - explain structured findings and evidence;
 - ask for missing seller targets/costs;
-- request that the host display the exact approval confirmation dialog.
+- request that the host display the exact approval confirmation dialog;
+- explain execution-plan preconditions and fake receipts.
 
 The LLM is not authoritative for:
 
@@ -133,13 +190,14 @@ The LLM is not authoritative for:
 - target ID resolution;
 - bid-policy math;
 - approval proof;
+- idempotency identity;
 - Amazon account execution.
 
 Those responsibilities stay in deterministic code and the trusted host boundary.
 
-## Evaluation fixtures
+## Evaluation and regression coverage
 
-Synthetic V1.0 fixtures live under `test/fixtures/v1.0/`. The acceptance scenario covers:
+Synthetic V1.0 fixtures live under `test/fixtures/v1.0/`. The baseline acceptance scenario covers:
 
 - zero-sales PPC waste;
 - high-ACOS bid-down;
@@ -150,23 +208,39 @@ Synthetic V1.0 fixtures live under `test/fixtures/v1.0/`. The acceptance scenari
 - explicit approval state transition;
 - two-operation zero-write dry run.
 
-Additional V1.0 regression suites cover release blockers and data-quality hardening, including approved-content tampering, blank identifiers, conflicting target snapshots, empty reports, invalid/negative numeric data, non-positive bids, missing scale target context, and Change Set ID collisions.
+V1.1 regression suites add coverage for:
+
+- deterministic execution-plan compilation;
+- signed-envelope tamper rejection;
+- deterministic plan and operation idempotency keys;
+- unsupported ready mutation rejection;
+- fake bid application;
+- stale bid rejection;
+- duplicate exact negative detection;
+- immutable execution plans;
+- plan replay receipt caching;
+- forced simulated failure and later-operation skipping;
+- partial-failure receipts;
+- actual Pi extension registration of V1.1 tools;
+- host-approved envelope → execution plan → fake execution with zero external writes.
 
 ## Safety contract
 
 Every mutation proposal preserves `humanApprovalRequired: true`.
 
-The system fails closed when identifiers, current values, targets, before/after states, report data, or approval proof are missing, invalid, ambiguous, stale, or modified. It must never claim an Amazon change was executed unless a future real executor returns and records that result.
+The system fails closed when identifiers, current values, targets, before/after states, report data, approval proof, or execution preconditions are missing, invalid, ambiguous, stale, or modified.
+
+V1.1 contains no Amazon Ads/Seller Central mutation client, OAuth execution flow, access token, refresh token, or live executor. It must never claim a fake receipt represents a live Amazon change.
 
 ## Current release limitations
 
-The V1.0 file-first operator still has explicit gaps that should not be hidden:
+The V1.1 file-first operator still has explicit gaps that should not be hidden:
 
 - no verified XLSX adapter;
 - no persistent seller profile/store policy persistence;
-- no real Amazon Ads/SP-API connector;
+- no real Amazon Ads/SP-API connector or live mutation executor;
+- no persistent production idempotency/receipt store;
+- no live state refetch, retry/rate-limit layer, or rollback support;
 - no scheduled daily execution;
 - no web/WorkBuddy operational UI;
-- full monorepo CI has not yet been observed on the current fork/PR.
-
-See `docs/amazon-seller-agent-v1.0-release-checklist.md` before moving the PR out of Draft.
+- root monorepo CI may still be affected by the pre-existing upstream Pi core type error already documented in V1.0; the dedicated Amazon release gate is the package-specific release signal.
