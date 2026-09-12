@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	normalizeSellerAmazonAdsMcpSessionContext,
-	type SellerAmazonAdsMcpSessionContext,
-} from "../src/index.ts";
+import { normalizeSellerAmazonAdsMcpSessionContext, type SellerAmazonAdsMcpSessionContext } from "../src/index.ts";
 
 function session(): SellerAmazonAdsMcpSessionContext {
 	return {
@@ -63,12 +60,16 @@ describe("Amazon Seller Agent V1.3 Amazon Ads MCP session boundary", () => {
 			{ ...session(), authorization: "Bearer secret" },
 			{ ...session(), credentials: { refreshToken: "nested-secret" } },
 		]) {
-			expect(() => normalizeSellerAmazonAdsMcpSessionContext(sensitive)).toThrow(/secret|credential|token|authorization/i);
+			expect(() => normalizeSellerAmazonAdsMcpSessionContext(sensitive)).toThrow(
+				/secret|credential|token|authorization/i,
+			);
 		}
 	});
 
 	it("rejects blank principal identity but allows it to be omitted", () => {
-		expect(normalizeSellerAmazonAdsMcpSessionContext({ ...session(), principalId: undefined }).principalId).toBeNull();
+		expect(
+			normalizeSellerAmazonAdsMcpSessionContext({ ...session(), principalId: undefined }).principalId,
+		).toBeNull();
 		expect(() => normalizeSellerAmazonAdsMcpSessionContext({ ...session(), principalId: "   " })).toThrow(
 			/principal|identity/i,
 		);
