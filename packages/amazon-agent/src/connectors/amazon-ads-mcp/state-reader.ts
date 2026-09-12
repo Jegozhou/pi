@@ -1,0 +1,118 @@
+import type { SellerExecutionOperation } from "../../execution/plan-types.ts";
+import {
+	assertSellerAmazonAdsAccountScope,
+	sellerAmazonAdsAccountScopeKey,
+	type SellerAmazonAdsAccountScope,
+} from "../../live-execution/account-scope.ts";
+import type {
+	SellerExecutionStateReader,
+	SellerTrustedOperationState,
+} from "../../live-execution/state-reader.ts";
+import { inventorySellerAmazonAdsMcpCapabilities } from "./capabilities.ts";
+import {
+	type SellerAmazonAdsMcpReadBinding,
+	type SellerAmazonAdsMcpSemanticRead,
+	verifySellerAmazonAdsMcpReadBinding,
+} from "./read-bindings.ts";
+import { normalizeSellerAmazonAdsMcpSessionContext } from "./session.ts";
+import type { SellerAmazonAdsMcpReadRequest, SellerAmazonAdsMcpTransport } from "./types.ts";
+
+function unavailable(operation: SellerExecutionOperation, reason: string): SellerTrustedOperationState {
+	return operation.operation === "set-bid"
+		? { operation: "set-bid", status: "unavailable", reason }
+		: { operation: "add-negative-exact", status: "unavailable", reason };
+}
+
+function semanticForOperation(operation: SellerExecutionOperation): SellerAmazonAdsMcpSemanticRead {
+	return operation.operation === "set-bid" ? "read-target-bid" : "read-negative-exact-existence";
+}
+
+function exactBinding(
+	bindings: readonly SellerAmazonAdsMcpReadBinding[],
+	semantic: SellerAmazonAdsMcpSemanticRead,
+): SellerAmazonAdsMcpReadBinding {
+	const matches = bindings.filter((binding) => binding.semantic === semantic);
+	if (matches.length !== 1) {
+		throw new Error(`Amazon Ads MCP semantic read binding is missing or ambiguous for ${semantic}`);
+	}
+	return matches[0]!;
+}
+
+function requestForOperation(
+	binding: SellerAmazonAdsMcpReadBinding,
+	accountScope: SellerAmazonAdsAccountScope,
+	operation: SellerExecutionOperation,
+): SellerAmazonAdsMcpReadRequest {
+	if (operation.operation === "set-bid") {
+		return {
+			toolName: binding.toolName,
+			arguments: {
+				profileId: accountScope.profileId,
+				marketplaceId: accountScope.marketplaceId,
+				region: accountScope.region,
+				targetId: operation.targetId,
+			},
+		};
+	}
+	return {
+		toolName: binding.toolName,
+		arguments: {
+			profileId: accountScope.profileId,
+			marketplaceId: accountScope.marketplaceId,
+			region: accountScope.region,
+			campaignId: operation.campaignId,
+			adGroupId: operation.adGroupId,
+			negativeExact: operation.negativeExact,
+		},
+	};
+}
+
+function parseBidResult(value: unknown): SellerTrustedOperationState {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		throw new Error("Amazon Ads MCP target-bid read returned an invalid or ambiguous result");
+	}
+	const currentBid = (value as Record<string, unknown>).currentBid;
+	if (typeof currentBid !== "number" || !Number.isFinite(currentBid) || currentBid <= 0) {
+		throw new Error("Amazon Ads MCP target-bid read returned an invalid currentBid");
+	}
+	return { operation: "set-bid", status: "available", currentBid };
+}
+
+function parseNegativeResult(value: unknown): SellerTrustedOperationState {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		throw new Error("Amazon Ads MCP negative-exact read returned an invalid or ambiguous result");
+	}
+	const exists = (value as Record<string, unknown>).exists;
+	if (typeof exists !== "boolean") {
+		throw new Error("Amazon Ads MCP negative-exact read returned an invalid existence flag");
+	}
+	return { operation: "add-negative-exact", status: "available", exists };
+}
+
+export function createSellerAmazonAdsMcpStateReader(
+	transport: SellerAmazonAdsMcpTransport,
+	bindings: readonly SellerAmazonAdsMcpReadBinding[],
+): SellerExecutionStateReader {
+	return {
+		async readOperationState(accountScope, operation) {
+			try {
+				assertSellerAmazonAdsAccountScope(accountScope);
+				const session = normalizeSellerAmazonAdsMcpSessionContext(await transport.getSessionContext());
+				if (sellerAmazonAdsAccountScopeKey(session.accountScope) !== sellerAmazonAdsAccountScopeKey(accountScope)) {
+					throw new Error("Amazon Ads MCP authenticated session account scope does not match requested scope");
+				}
+
+				const inventory = inventorySellerAmazonAdsMcpCapabilities(await transport.listTools());
+				const semantic = semanticForOperation(operation);
+				const binding = exactBinding(bindings, semantic);
+				const verifiedBinding = verifySellerAmazonAdsMcpReadBinding(binding, inventory, accountScope);
+				const request = requestForOperation(verifiedBinding, accountScope, operation);
+				const result = await transport.callReadTool(structuredClone(request));
+				return operation.operation === "set-bid" ? parseBidResult(result) : parseNegativeResult(result);
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return unavailable(operation, `Amazon Ads MCP trusted state unavailable: ${message}`);
+			}
+		},
+	};
+}
