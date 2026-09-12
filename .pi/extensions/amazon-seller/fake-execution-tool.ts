@@ -76,6 +76,39 @@ function parseExecutionPlan(raw: string): SellerExecutionPlan {
 	return parsed as unknown as SellerExecutionPlan;
 }
 
+function parseExecutionReceipt(value: unknown, cacheKey: string): SellerExecutionReceipt {
+	if (
+		!isRecord(value) ||
+		typeof value.planId !== "string" ||
+		typeof value.planIdempotencyKey !== "string" ||
+		value.planIdempotencyKey !== cacheKey ||
+		typeof value.adapterName !== "string" ||
+		value.externalWritesPerformed !== false ||
+		!Array.isArray(value.operations)
+	) {
+		throw new Error("fakeStateJson contains an invalid processed plan receipt");
+	}
+
+	for (const operation of value.operations) {
+		if (
+			!isRecord(operation) ||
+			typeof operation.proposalId !== "string" ||
+			(operation.operation !== "set-bid" && operation.operation !== "add-negative-exact") ||
+			typeof operation.idempotencyKey !== "string" ||
+			(operation.status !== "applied" &&
+				operation.status !== "blocked-stale" &&
+				operation.status !== "already-applied" &&
+				operation.status !== "simulated-failure" &&
+				operation.status !== "skipped-after-failure") ||
+			typeof operation.message !== "string"
+		) {
+			throw new Error("fakeStateJson contains an invalid processed operation receipt");
+		}
+	}
+
+	return value as unknown as SellerExecutionReceipt;
+}
+
 function parseFakeState(raw: string): FakeAmazonAdsState {
 	const parsed = parseJsonObject(raw, "fakeStateJson");
 	if (!isRecord(parsed.bidsByTargetId)) {
@@ -91,10 +124,22 @@ function parseFakeState(raw: string): FakeAmazonAdsState {
 	if (!Array.isArray(parsed.negativeExactByScope) || !parsed.negativeExactByScope.every((value) => typeof value === "string")) {
 		throw new Error("fakeStateJson.negativeExactByScope must be an array of strings");
 	}
+
+	const processedPlanKeys = new Map<string, SellerExecutionReceipt>();
+	if (parsed.processedPlanKeys !== undefined) {
+		if (!isRecord(parsed.processedPlanKeys)) {
+			throw new Error("fakeStateJson.processedPlanKeys must be an object when provided");
+		}
+		for (const [key, receipt] of Object.entries(parsed.processedPlanKeys)) {
+			if (key.length === 0) throw new Error("fakeStateJson contains an empty processed plan key");
+			processedPlanKeys.set(key, parseExecutionReceipt(receipt, key));
+		}
+	}
+
 	return {
 		bidsByTargetId,
 		negativeExactByScope: new Set(parsed.negativeExactByScope),
-		processedPlanKeys: new Map(),
+		processedPlanKeys,
 	};
 }
 
@@ -118,7 +163,8 @@ const fakeExecutePlanTool = defineTool({
 	parameters: Type.Object({
 		planJson: Type.String({ description: "JSON object returned by amazon_build_execution_plan" }),
 		fakeStateJson: Type.String({
-			description: "Fake state JSON with bidsByTargetId object and negativeExactByScope string array",
+			description:
+				"Fake state JSON with bidsByTargetId object, negativeExactByScope string array, and optional processedPlanKeys returned by a prior fake execution",
 		}),
 		failProposalIds: Type.Optional(
 			Type.Array(Type.String(), { description: "Optional proposal IDs to force into simulated-failure for testing" }),
