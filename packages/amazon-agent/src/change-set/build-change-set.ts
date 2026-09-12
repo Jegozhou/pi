@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { SellerActionPlanItem } from "../action-plan/types.ts";
 import type {
 	SellerChangeOperation,
@@ -48,10 +49,14 @@ function proposalFor(item: SellerActionPlanItem): SellerChangeProposal {
 	};
 }
 
+function changeSetIdentity(sourceActionItemIds: readonly string[]): string {
+	return createHash("sha256").update(JSON.stringify(sourceActionItemIds)).digest("hex").slice(0, 24);
+}
+
 export function buildSellerChangeSet(input: SellerChangeSetInput): SellerChangeSet {
 	const sourceActionItemIds = input.items.map((item) => item.id);
 	return {
-		id: `changeset:v1:${sourceActionItemIds.join("|")}`,
+		id: `changeset:v1:${changeSetIdentity(sourceActionItemIds)}`,
 		version: 1,
 		status: "draft",
 		sourceActionItemIds,
