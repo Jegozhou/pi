@@ -189,11 +189,13 @@ describe("Amazon Seller Agent V0.6 change sets and approval gate", () => {
 			decidedAt: "2026-09-13T00:00:00.000Z",
 		});
 		expect(approved.status).toBe("approved");
-		expect(approved.decision).toEqual({
+		expect(approved.decision).toMatchObject({
 			outcome: "approved",
 			actor: "seller@example",
 			decidedAt: "2026-09-13T00:00:00.000Z",
+			provenance: "trusted-caller",
 		});
+		expect(approved.decision?.contentDigest).toMatch(/^[a-f0-9]{64}$/);
 		expect(approved).not.toHaveProperty("executedAt");
 		expect(awaiting.status).toBe("awaiting-approval");
 	});
