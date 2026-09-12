@@ -72,7 +72,7 @@ function cell(row: readonly string[], columns: ColumnMap, field: TargetSnapshotS
 function parseBid(rawValue: string | null, sourceRow: number): { value: number | null; warning: TargetSnapshotWarning | null } {
 	if (rawValue === null) return { value: null, warning: null };
 	const value = Number(rawValue);
-	if (!Number.isFinite(value)) {
+	if (!Number.isFinite(value) || value <= 0) {
 		return {
 			value: null,
 			warning: {
