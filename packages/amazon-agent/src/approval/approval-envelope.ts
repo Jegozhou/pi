@@ -60,6 +60,9 @@ function assertApprovedDigest(changeSet: SellerChangeSet): string {
 	if (changeSet.status !== "approved" || changeSet.decision?.outcome !== "approved") {
 		throw new Error("Approval envelope requires an approved Change Set");
 	}
+	if (changeSet.decision.provenance !== "host-ui-confirmation") {
+		throw new Error("Approval envelope requires host-ui-confirmation provenance");
+	}
 	const recordedDigest = changeSet.decision.contentDigest;
 	if (!recordedDigest) throw new Error("Approved Change Set is missing its content digest");
 	const actualDigest = computeSellerChangeSetContentDigest(changeSet);
@@ -83,10 +86,23 @@ export function createSellerApprovalEnvelope(
 	};
 }
 
+function assertEnvelopeShape(envelope: SellerApprovalEnvelope): void {
+	if (!envelope || typeof envelope !== "object") {
+		throw new Error("A signed approval envelope is required");
+	}
+	if (!envelope.changeSet || typeof envelope.changeSet !== "object") {
+		throw new Error("Approval envelope is missing its Change Set");
+	}
+	if (!envelope.proof || typeof envelope.proof !== "object") {
+		throw new Error("Approval envelope is missing its proof");
+	}
+}
+
 export function verifySellerApprovalEnvelope(
 	envelope: SellerApprovalEnvelope,
 	secret: SellerApprovalSecret,
 ): SellerChangeSet {
+	assertEnvelopeShape(envelope);
 	if (envelope.proof.algorithm !== "hmac-sha256") {
 		throw new Error(`Unsupported approval proof algorithm: ${envelope.proof.algorithm}`);
 	}
