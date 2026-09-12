@@ -6,12 +6,14 @@ import {
 	buildReportInspectionResult,
 	buildSellerActionPlan,
 	buildSellerChangeSet,
+	createSellerApprovalEnvelope,
 	decideSellerChangeSet,
 	requestSellerChangeSetApproval,
 	type PpcPolicyOverrides,
 	type SellerActionPlan,
 	type SellerChangeSet,
 } from "../../../packages/amazon-agent/src/index.ts";
+import { amazonApprovalSecret } from "./approval-session.ts";
 import { registerAmazonBidPolicyTool } from "./bid-policy-tool.ts";
 import { registerAmazonEnrichmentTool } from "./enrichment-tool.ts";
 import { readAmazonReportFile } from "./file-input.ts";
@@ -27,6 +29,30 @@ function parseJsonObject<T>(raw: string, label: string): T {
 		throw new Error(`${label} must contain a JSON object`);
 	}
 	return parsed as T;
+}
+
+function decisionConfirmationMessage(
+	changeSet: SellerChangeSet,
+	decision: "approve" | "reject",
+	actor: string,
+): string {
+	const proposalLines = changeSet.proposals.flatMap((proposal, index) => [
+		`${index + 1}. ${proposal.operation} | ${proposal.entity.type}:${proposal.entity.value} | ${proposal.readiness}`,
+		`   before: ${JSON.stringify(proposal.before)}`,
+		`   after: ${JSON.stringify(proposal.after)}`,
+	]);
+	return [
+		`Decision: ${decision.toUpperCase()}`,
+		`Change Set: ${changeSet.id}`,
+		`Version: ${changeSet.version}`,
+		`Actor label: ${actor}`,
+		"",
+		...proposalLines,
+		"",
+		decision === "approve"
+			? "Confirm that you personally approve exactly these changes. This records approval only and does not write to Amazon."
+			: "Confirm that you personally reject this exact Change Set.",
+	].join("\n");
 }
 
 const inspectReportTool = defineTool({
@@ -213,22 +239,44 @@ const requestChangeSetApprovalTool = defineTool({
 
 const decideChangeSetTool = defineTool({
 	name: "amazon_decide_change_set",
-	label: "Record Amazon Change Set Decision",
+	label: "Confirm Amazon Change Set Decision",
 	description:
-		"Record an explicit human approve/reject decision for a Change Set already awaiting approval. Approval means approved for a future executor only; nothing is executed or written to Amazon.",
+		"Request a host UI confirmation for an awaiting-approval Change Set. The model can request this tool, but approval or rejection is recorded only after a human confirms the exact Change Set in the host dialog. Approved results are returned as signed approval envelopes for dry-run verification.",
 	parameters: Type.Object({
-		changeSetJson: Type.String({ description: "JSON object for a SellerChangeSet in awaiting-approval status" }),
+		changeSetJson: Type.String({ description: "JSON object for the exact SellerChangeSet in awaiting-approval status" }),
 		decision: Type.Union([Type.Literal("approve"), Type.Literal("reject")]),
-		actor: Type.String({ description: "Non-empty identifier for the human making the decision" }),
-		decidedAt: Type.String({ description: "Canonical ISO timestamp, for example 2026-09-13T00:00:00.000Z" }),
+		actor: Type.String({ description: "Display label for the human decision maker; this label is not approval proof" }),
 	}),
-	async execute(_toolCallId, params) {
+	async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+		if (!ctx?.hasUI) {
+			throw new Error("Amazon Change Set decisions require a dialog-capable host UI for human confirmation");
+		}
 		const changeSet = parseJsonObject<SellerChangeSet>(params.changeSetJson, "changeSetJson");
+		const actor = params.actor.trim();
+		if (!actor) throw new Error("actor must be a non-empty display label");
+		const confirmed = await ctx.ui.confirm(
+			params.decision === "approve" ? "Approve Amazon Change Set?" : "Reject Amazon Change Set?",
+			decisionConfirmationMessage(changeSet, params.decision, actor),
+			{ signal },
+		);
+		if (!confirmed) {
+			throw new Error("Human did not confirm the Amazon Change Set decision");
+		}
 		const result = decideSellerChangeSet(changeSet, {
 			decision: params.decision,
-			actor: params.actor,
-			decidedAt: params.decidedAt,
+			actor,
+			decidedAt: new Date().toISOString(),
+			provenance: "host-ui-confirmation",
 		});
+
+		if (params.decision === "approve") {
+			const approvalEnvelope = createSellerApprovalEnvelope(result, amazonApprovalSecret);
+			return {
+				content: [{ type: "text", text: JSON.stringify(approvalEnvelope, null, 2) }],
+				details: { result: approvalEnvelope },
+			};
+		}
+
 		return {
 			content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
 			details: { result },
