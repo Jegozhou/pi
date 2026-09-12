@@ -35,7 +35,7 @@ export { enrichSellerChangeSet } from "./change-set/enrich-change-set.ts";
 export type {
 	SellerChangeOperation,
 	SellerChangeProposal,
-	SellerChangeProposalReadiness,
+SellerChangeProposalReadiness,
 	SellerChangeSet,
 	SellerChangeSetDecision,
 	SellerChangeSetDecisionInput,
@@ -45,11 +45,19 @@ export type {
 	SellerChangeSetStatus,
 	SellerDecisionProvenance,
 } from "./change-set/types.ts";
+export {
+	inventorySellerAmazonAdsMcpCapabilities,
+	requireSellerAmazonAdsMcpReadCandidate,
+} from "./connectors/amazon-ads-mcp/capabilities.ts";
 export { normalizeSellerAmazonAdsMcpSessionContext } from "./connectors/amazon-ads-mcp/session.ts";
 export type {
+	SellerAmazonAdsMcpCapability,
+	SellerAmazonAdsMcpCapabilityClassification,
+	SellerAmazonAdsMcpCapabilityInventory,
 	SellerAmazonAdsMcpNormalizedSession,
 	SellerAmazonAdsMcpReadRequest,
 	SellerAmazonAdsMcpSessionContext,
+	SellerAmazonAdsMcpToolAnnotations,
 	SellerAmazonAdsMcpToolDescriptor,
 	SellerAmazonAdsMcpTransport,
 } from "./connectors/amazon-ads-mcp/types.ts";
