@@ -63,6 +63,7 @@ export function evaluateScaleEfficientTarget(
 ): Finding | null {
 	if (policy.targetAcos === null || metrics.acos === null) return null;
 	if (!hasEnoughOrders(row, policy)) return null;
+	if (!row.targeting || row.targeting.trim().length === 0) return null;
 
 	const threshold = policy.targetAcos * (1 - policy.lowAcosScaleMargin);
 	if (metrics.acos > threshold) return null;
@@ -79,10 +80,11 @@ export function evaluateScaleEfficientTarget(
 			lowAcosScaleMargin: policy.lowAcosScaleMargin,
 			minimumOrdersScale: policy.minimumOrdersScale,
 		},
-		rationale: "The search term has enough attributed orders and ACOS is sufficiently below the seller target to consider cautious scaling.",
+		rationale:
+			"The search term has enough attributed orders, ACOS is sufficiently below the seller target, and its source targeting context is present for a cautious scaling review.",
 		recommendedAction: {
 			type: "scale-candidate",
-			summary: "Review the source target for cautious bid or budget scaling; budget exhaustion is not inferred from this report.",
+			summary: "Review the identified source target for cautious bid or budget scaling; budget exhaustion is not inferred from this report.",
 		},
 	});
 }
