@@ -85,6 +85,14 @@ describe("Amazon V1.0 data quality hardening", () => {
 		expect(findings.some((finding) => finding.category === "scale")).toBe(false);
 	});
 
+	it("rejects ambiguous duplicate aliases for the same report field", () => {
+		const content = [
+			"Campaign,Campaign Name,Ad Group,Customer Search Term,Impressions,Clicks,Spend,Sales",
+			"SP A,SP B,Shoes,trail running shoes,100,10,5,20",
+		].join("\n");
+		expect(() => normalizeSearchTermReport({ content, fileName: "ambiguous.csv" })).toThrow(/ambiguous.*campaign/i);
+	});
+
 	it("uses collision-resistant Change Set IDs instead of raw joined action IDs", () => {
 		const left = buildSellerChangeSet(plan(["a|b", "c"]));
 		const right = buildSellerChangeSet(plan(["a", "b|c"]));
