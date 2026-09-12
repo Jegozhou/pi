@@ -112,6 +112,12 @@ export {
 	verifySellerExecutionAuthorizationEnvelope,
 } from "./live-execution/authorization.ts";
 export type {
+	SellerLiveExecutionPreflight,
+	SellerLiveExecutionPreflightOptions,
+	SellerLiveExecutionPreflightStatus,
+} from "./live-execution/build-live-preflight.ts";
+export { buildSellerLiveExecutionPreflight } from "./live-execution/build-live-preflight.ts";
+export type {
 	SellerExecutionIdempotencyReservation,
 	SellerExecutionIdempotencyReservationResult,
 	SellerExecutionIdempotencyStore,
