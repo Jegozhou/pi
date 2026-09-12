@@ -29,6 +29,12 @@ export function createFinding(options: {
 			type: "search-term",
 			value: row.customerSearchTerm,
 		},
+		context: {
+			campaignName: row.campaignName,
+			adGroupName: row.adGroupName,
+			targeting: row.targeting,
+			matchType: row.matchType,
+		},
 		metrics: {
 			...options.metrics,
 			impressions: row.impressions,
