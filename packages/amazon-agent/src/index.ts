@@ -9,6 +9,7 @@ export type {
 } from "./action-plan/types.ts";
 export { buildSellerChangeSet } from "./change-set/build-change-set.ts";
 export { decideSellerChangeSet, requestSellerChangeSetApproval } from "./change-set/decide-change-set.ts";
+export { enrichSellerChangeSet } from "./change-set/enrich-change-set.ts";
 export type {
 	SellerChangeOperation,
 	SellerChangeProposal,
@@ -16,7 +17,9 @@ export type {
 	SellerChangeSet,
 	SellerChangeSetDecision,
 	SellerChangeSetDecisionInput,
+	SellerChangeSetEnrichmentResult,
 	SellerChangeSetInput,
+	SellerChangeSetResolverDiagnostics,
 	SellerChangeSetStatus,
 } from "./change-set/types.ts";
 export { diagnosePpc } from "./diagnostics/diagnose-ppc.ts";
@@ -33,6 +36,7 @@ export type {
 	FindingMetrics,
 	FindingPriority,
 	PpcPolicy,
+	PpcSourceContext,
 	RecommendedAction,
 	RecommendedActionType,
 } from "./diagnostics/types.ts";
@@ -41,6 +45,7 @@ export { calculateProfitabilityMetrics } from "./metrics/profitability.ts";
 export { DelimitedTextError, parseDelimitedText } from "./parsers/delimited.ts";
 export { normalizeProfitabilityReport } from "./parsers/profitability-report.ts";
 export { inspectAdvertisingReport, normalizeSearchTermReport } from "./parsers/search-term-report.ts";
+export { normalizeTargetSnapshot } from "./parsers/target-snapshot.ts";
 export {
 	buildPpcDiagnosisResult,
 	buildProfitDiagnosisResult,
@@ -70,3 +75,10 @@ export type {
 	ProfitabilityReportInspection,
 	ProfitabilityWarning,
 } from "./types/profitability.ts";
+export type {
+	NormalizedTargetSnapshotRow,
+	TargetSnapshotInspection,
+	TargetSnapshotParseResult,
+	TargetSnapshotSemanticField,
+	TargetSnapshotWarning,
+} from "./types/targeting.ts";
