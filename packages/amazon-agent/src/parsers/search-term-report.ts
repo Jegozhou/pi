@@ -77,8 +77,13 @@ function mapColumns(headers: readonly string[]): ColumnMap {
 	const canonicalHeaders = headers.map(canonicalizeHeader);
 	for (const field of Object.keys(HEADER_ALIASES) as AdvertisingSemanticField[]) {
 		const aliases = HEADER_ALIASES[field];
-		const index = canonicalHeaders.findIndex((header) => aliases.includes(header));
-		if (index !== -1) result[field] = index;
+		const matches = canonicalHeaders
+			.map((header, index) => (aliases.includes(header) ? index : -1))
+			.filter((index) => index !== -1);
+		if (matches.length > 1) {
+			throw new Error(`Ambiguous report schema for ${field}: multiple matching header aliases`);
+		}
+		if (matches.length === 1) result[field] = matches[0];
 	}
 	return result;
 }
