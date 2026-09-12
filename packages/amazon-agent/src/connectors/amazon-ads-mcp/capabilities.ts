@@ -53,10 +53,11 @@ function normalizeAnnotations(value: unknown): SellerAmazonAdsMcpToolAnnotations
 	const source = value as Record<string, unknown>;
 	assertOptionalBoolean(source.readOnlyHint, "readOnlyHint");
 	assertOptionalBoolean(source.destructiveHint, "destructiveHint");
-	return {
-		...(source.readOnlyHint !== undefined ? { readOnlyHint: source.readOnlyHint as boolean } : {}),
-		...(source.destructiveHint !== undefined ? { destructiveHint: source.destructiveHint as boolean } : {}),
-	};
+	const normalized = canonicalize(source);
+	if (!normalized || typeof normalized !== "object" || Array.isArray(normalized)) {
+		throw new Error("Amazon Ads MCP tool annotations must be JSON-compatible metadata");
+	}
+	return normalized as SellerAmazonAdsMcpToolAnnotations;
 }
 
 function normalizeDescriptor(input: SellerAmazonAdsMcpToolDescriptor): SellerAmazonAdsMcpToolDescriptor {
@@ -69,13 +70,14 @@ function normalizeDescriptor(input: SellerAmazonAdsMcpToolDescriptor): SellerAma
 	if (input.description !== undefined && typeof input.description !== "string") {
 		throw new Error("Amazon Ads MCP tool descriptor description must be a string");
 	}
-	const descriptor: SellerAmazonAdsMcpToolDescriptor = {
-		name: input.name.trim(),
-		...(input.description !== undefined ? { description: input.description } : {}),
-		...(input.inputSchema !== undefined ? { inputSchema: structuredClone(input.inputSchema) } : {}),
-		...(input.annotations !== undefined ? { annotations: normalizeAnnotations(input.annotations) } : {}),
-	};
-	canonicalize(descriptor);
+
+	const normalized = canonicalize(input);
+	if (!normalized || typeof normalized !== "object" || Array.isArray(normalized)) {
+		throw new Error("Amazon Ads MCP tool descriptor must be JSON-compatible metadata");
+	}
+	const descriptor = normalized as SellerAmazonAdsMcpToolDescriptor;
+	descriptor.name = input.name.trim();
+	if (input.annotations !== undefined) descriptor.annotations = normalizeAnnotations(input.annotations);
 	return descriptor;
 }
 
