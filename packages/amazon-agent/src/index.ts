@@ -45,6 +45,8 @@ export type {
 	SellerChangeSetStatus,
 	SellerDecisionProvenance,
 } from "./change-set/types.ts";
+export type { SellerAmazonAdsMcpLivePreflightInput } from "./connectors/amazon-ads-mcp/build-preflight.ts";
+export { buildSellerAmazonAdsMcpLivePreflight } from "./connectors/amazon-ads-mcp/build-preflight.ts";
 export {
 	inventorySellerAmazonAdsMcpCapabilities,
 	requireSellerAmazonAdsMcpReadCandidate,
