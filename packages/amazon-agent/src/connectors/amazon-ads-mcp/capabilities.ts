@@ -7,6 +7,52 @@ import type {
 	SellerAmazonAdsMcpToolDescriptor,
 } from "./types.ts";
 
+const SENSITIVE_CREDENTIAL_SUFFIXES = [
+	"accesstoken",
+	"refreshtoken",
+	"sessiontoken",
+	"authtoken",
+	"authorizationtoken",
+	"bearertoken",
+	"clientsecret",
+	"authorization",
+	"credential",
+	"credentials",
+	"password",
+	"secret",
+	"apikey",
+	"bearer",
+] as const;
+
+function normalizedKey(key: string): string {
+	return key.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
+}
+
+function isCredentialFieldName(key: string): boolean {
+	const normalized = normalizedKey(key);
+	return SENSITIVE_CREDENTIAL_SUFFIXES.some((suffix) => normalized === suffix || normalized.endsWith(suffix));
+}
+
+function assertNoCredentialFields(value: unknown, path = "descriptor", seen = new WeakSet<object>()): void {
+	if (Array.isArray(value)) {
+		if (seen.has(value)) return;
+		seen.add(value);
+		for (const [index, entry] of value.entries()) {
+			assertNoCredentialFields(entry, `${path}[${index}]`, seen);
+		}
+		return;
+	}
+	if (value === null || typeof value !== "object") return;
+	if (seen.has(value)) return;
+	seen.add(value);
+	for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+		if (isCredentialFieldName(key)) {
+			throw new Error(`Amazon Ads MCP descriptor contains sensitive credential field at ${path}.${key}`);
+		}
+		assertNoCredentialFields(child, `${path}.${key}`, seen);
+	}
+}
+
 function canonicalize(value: unknown, seen = new WeakSet<object>()): unknown {
 	if (Array.isArray(value)) {
 		if (seen.has(value)) throw new Error("Amazon Ads MCP tool descriptor must not contain cyclic values");
@@ -64,6 +110,7 @@ function normalizeDescriptor(input: SellerAmazonAdsMcpToolDescriptor): SellerAma
 	if (!input || typeof input !== "object" || Array.isArray(input)) {
 		throw new Error("Amazon Ads MCP tool descriptor is required");
 	}
+	assertNoCredentialFields(input);
 	if (typeof input.name !== "string" || input.name.trim().length === 0) {
 		throw new Error("Amazon Ads MCP tool descriptor requires a non-empty name");
 	}
