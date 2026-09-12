@@ -87,6 +87,20 @@ describe("Amazon Seller Agent V1.2 execution authorization", () => {
 		).toThrow(/signature|digest|tamper/i);
 	});
 
+	it("rejects mutated operation content even when plan identity fields are preserved", () => {
+		const envelope = createEnvelope();
+		const tamperedPlan = structuredClone(plan());
+		const operation = tamperedPlan.operations[0];
+		if (!operation || operation.operation !== "set-bid") throw new Error("expected set-bid operation");
+		operation.after.bid = 0.5;
+
+		expect(() =>
+			verifySellerExecutionAuthorizationEnvelope(envelope, tamperedPlan, SECRET, {
+				now: "2026-09-13T03:10:00.000Z",
+			}),
+		).toThrow(/plan.*content|content.*plan|digest|mismatch/i);
+	});
+
 	it("rejects a different execution plan even when the envelope itself is valid", () => {
 		const envelope = createEnvelope();
 		const different = structuredClone(plan());
