@@ -2,11 +2,7 @@ import type { SellerExecutionOperation, SellerExecutionPlan } from "../execution
 import { assertSellerAmazonAdsAccountScope, type SellerAmazonAdsAccountScope } from "./account-scope.ts";
 import type { SellerExecutionStateReader, SellerTrustedOperationState } from "./state-reader.ts";
 
-export type SellerLiveOperationPreflightStatus =
-	| "ready"
-	| "already-desired"
-	| "blocked-stale"
-	| "blocked-unavailable";
+export type SellerLiveOperationPreflightStatus = "ready" | "already-desired" | "blocked-stale" | "blocked-unavailable";
 
 export type SellerLiveOperationObservedState = { currentBid: number } | { exists: boolean } | null;
 
@@ -126,9 +122,7 @@ async function preflightOperation(
 		const message = error instanceof Error ? error.message : String(error);
 		return unavailable(operation, `Trusted state read failure: ${message}`);
 	}
-	return operation.operation === "set-bid"
-		? preflightBid(operation, state)
-		: preflightNegativeExact(operation, state);
+	return operation.operation === "set-bid" ? preflightBid(operation, state) : preflightNegativeExact(operation, state);
 }
 
 function batchStatus(operations: SellerLiveOperationPreflight[]): SellerExecutionStatePreflightStatus {
