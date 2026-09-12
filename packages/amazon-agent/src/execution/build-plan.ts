@@ -1,11 +1,7 @@
 import { createHash } from "node:crypto";
 import type { SellerApprovalEnvelope, SellerApprovalSecret } from "../approval/approval-envelope.ts";
 import { buildSellerExecutionDryRun } from "./build-dry-run.ts";
-import type {
-	SellerExecutionOperation,
-	SellerExecutionPlan,
-	SellerExecutionPlanOptions,
-} from "./plan-types.ts";
+import type { SellerExecutionOperation, SellerExecutionPlan, SellerExecutionPlanOptions } from "./plan-types.ts";
 import type { SellerDryRunOperation } from "./types.ts";
 
 function sha256(value: string): string {
@@ -33,12 +29,7 @@ function toExecutionOperation(
 	contentDigest: string,
 	operation: SellerDryRunOperation,
 ): SellerExecutionOperation {
-	const idempotencyKey = buildOperationKey(
-		sourceChangeSetId,
-		sourceChangeSetVersion,
-		contentDigest,
-		operation,
-	);
+	const idempotencyKey = buildOperationKey(sourceChangeSetId, sourceChangeSetVersion, contentDigest, operation);
 
 	if (operation.operation === "set-bid") {
 		return {
@@ -79,12 +70,7 @@ export function buildSellerExecutionPlan(
 	);
 	const idempotencyKey = `execplan:${planDigest}`;
 	const operations = dryRun.operations.map((operation) =>
-		toExecutionOperation(
-			dryRun.sourceChangeSetId,
-			dryRun.sourceChangeSetVersion,
-			contentDigest,
-			operation,
-		),
+		toExecutionOperation(dryRun.sourceChangeSetId, dryRun.sourceChangeSetVersion, contentDigest, operation),
 	);
 
 	return {
