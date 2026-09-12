@@ -141,7 +141,10 @@ function transport(options: TransportOptions = {}): SellerAmazonAdsMcpTransport 
 	};
 }
 
-function conflictingStore(): { store: SellerExecutionIdempotencyStore; requests: SellerExecutionIdempotencyReservation[] } {
+function conflictingStore(): {
+	store: SellerExecutionIdempotencyStore;
+	requests: SellerExecutionIdempotencyReservation[];
+} {
 	const requests: SellerExecutionIdempotencyReservation[] = [];
 	return {
 		requests,
@@ -177,10 +180,7 @@ describe("Amazon Seller Agent V1.3 MCP live-preflight coordinator", () => {
 		});
 		expect(result.reservationId).toMatch(/^execres:/);
 		expect(result.operations.map((operation) => operation.status)).toEqual(["ready", "ready"]);
-		expect(calls.map((request) => request.toolName)).toEqual([
-			"synthetic-bid-reader",
-			"synthetic-negative-reader",
-		]);
+		expect(calls.map((request) => request.toolName)).toEqual(["synthetic-bid-reader", "synthetic-negative-reader"]);
 	});
 
 	it("blocks before reservation when the authenticated MCP session is for another account", async () => {
