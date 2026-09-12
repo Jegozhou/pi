@@ -63,8 +63,17 @@ export type {
 	RecommendedAction,
 	RecommendedActionType,
 } from "./diagnostics/types.ts";
+export type {
+	FakeAmazonAdsExecutorOptions,
+	FakeAmazonAdsState,
+	SellerExecutionAdapter,
+	SellerExecutionOperationReceipt,
+	SellerExecutionOperationStatus,
+	SellerExecutionReceipt,
+} from "./execution/adapter.ts";
 export { buildSellerExecutionDryRun } from "./execution/build-dry-run.ts";
 export { buildSellerExecutionPlan } from "./execution/build-plan.ts";
+export { createFakeAmazonAdsExecutor, fakeNegativeExactScopeKey } from "./execution/fake-amazon-ads-executor.ts";
 export type {
 	SellerBidExecutionOperation,
 	SellerExecutionOperation,
