@@ -38,6 +38,7 @@ function proposalFor(item: SellerActionPlanItem): SellerChangeProposal {
 		readiness: mapped.readiness,
 		entity: { ...item.entity },
 		...(item.context ? { context: { ...item.context } } : {}),
+		...(item.decisionContext ? { decisionContext: { ...item.decisionContext } } : {}),
 		rationale: item.rationale,
 		evidence: item.evidence.map((evidence) => ({ ...evidence })),
 		missingInputs: [...mapped.missingInputs],
