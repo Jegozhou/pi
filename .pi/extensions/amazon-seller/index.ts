@@ -7,14 +7,13 @@ import {
 	buildReportInspectionResult,
 	buildSellerActionPlan,
 	buildSellerChangeSet,
-	createSellerApprovalEnvelope,
-	decideSellerChangeSet,
 	requestSellerChangeSetApproval,
 	type PpcPolicyOverrides,
 	type SellerActionPlan,
 	type SellerApprovalSecret,
 	type SellerChangeSet,
 } from "../../../packages/amazon-agent/src/index.ts";
+import { confirmSellerChangeSetDecision } from "./approval-flow.ts";
 import { registerAmazonBidPolicyTool } from "./bid-policy-tool.ts";
 import { registerAmazonEnrichmentTool } from "./enrichment-tool.ts";
 import { registerAmazonExecutionDryRunTool } from "./execution-tool.ts";
@@ -31,30 +30,6 @@ function parseJsonObject<T>(raw: string, label: string): T {
 		throw new Error(`${label} must contain a JSON object`);
 	}
 	return parsed as T;
-}
-
-function decisionConfirmationMessage(
-	changeSet: SellerChangeSet,
-	decision: "approve" | "reject",
-	actor: string,
-): string {
-	const proposalLines = changeSet.proposals.flatMap((proposal, index) => [
-		`${index + 1}. ${proposal.operation} | ${proposal.entity.type}:${proposal.entity.value} | ${proposal.readiness}`,
-		`   before: ${JSON.stringify(proposal.before)}`,
-		`   after: ${JSON.stringify(proposal.after)}`,
-	]);
-	return [
-		`Decision: ${decision.toUpperCase()}`,
-		`Change Set: ${changeSet.id}`,
-		`Version: ${changeSet.version}`,
-		`Actor label: ${actor}`,
-		"",
-		...proposalLines,
-		"",
-		decision === "approve"
-			? "Confirm that you personally approve exactly these changes. This records approval only and does not write to Amazon."
-			: "Confirm that you personally reject this exact Change Set.",
-	].join("\n");
 }
 
 const inspectReportTool = defineTool({
@@ -248,41 +223,25 @@ function createDecideChangeSetTool(approvalSecret: SellerApprovalSecret) {
 		parameters: Type.Object({
 			changeSetJson: Type.String({ description: "JSON object for the exact SellerChangeSet in awaiting-approval status" }),
 			decision: Type.Union([Type.Literal("approve"), Type.Literal("reject")]),
-			actor: Type.String({ description: "Display label for the human decision maker; this label is not approval proof" }),
 		}),
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-			if (!ctx?.hasUI) {
-				throw new Error("Amazon Change Set decisions require a dialog-capable host UI for human confirmation");
-			}
 			const changeSet = parseJsonObject<SellerChangeSet>(params.changeSetJson, "changeSetJson");
-			const actor = params.actor.trim();
-			if (!actor) throw new Error("actor must be a non-empty display label");
-			const confirmed = await ctx.ui.confirm(
-				params.decision === "approve" ? "Approve Amazon Change Set?" : "Reject Amazon Change Set?",
-				decisionConfirmationMessage(changeSet, params.decision, actor),
-				{ signal },
-			);
-			if (!confirmed) {
-				throw new Error("Human did not confirm the Amazon Change Set decision");
-			}
-			const result = decideSellerChangeSet(changeSet, {
+			const result = await confirmSellerChangeSetDecision({
+				changeSet,
 				decision: params.decision,
-				actor,
-				decidedAt: new Date().toISOString(),
-				provenance: "host-ui-confirmation",
+				secret: approvalSecret,
+				host: {
+					hasUI: ctx?.hasUI ?? false,
+					confirm: async (title, message) => {
+						if (!ctx) return false;
+						return ctx.ui.confirm(title, message, { signal });
+					},
+				},
 			});
-
-			if (params.decision === "approve") {
-				const approvalEnvelope = createSellerApprovalEnvelope(result, approvalSecret);
-				return {
-					content: [{ type: "text", text: JSON.stringify(approvalEnvelope, null, 2) }],
-					details: { result: approvalEnvelope },
-				};
-			}
-
+			const output = result.approvalEnvelope ?? result.changeSet;
 			return {
-				content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-				details: { result },
+				content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+				details: { result: output },
 			};
 		},
 	});
