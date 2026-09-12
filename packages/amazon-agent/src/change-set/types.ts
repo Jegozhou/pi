@@ -1,4 +1,6 @@
 import type { SellerActionPlan, SellerActionPlanItem } from "../action-plan/types.ts";
+import type { PpcSourceContext } from "../diagnostics/types.ts";
+import type { TargetSnapshotWarning } from "../types/targeting.ts";
 
 export type SellerChangeSetStatus = "draft" | "awaiting-approval" | "approved" | "rejected";
 export type SellerChangeProposalReadiness = "blocked" | "review-only" | "ready";
@@ -17,6 +19,7 @@ export interface SellerChangeProposal {
 	operation: SellerChangeOperation;
 	readiness: SellerChangeProposalReadiness;
 	entity: SellerActionPlanItem["entity"];
+	context?: PpcSourceContext;
 	rationale: string;
 	evidence: Array<{ sourceFile: string; sourceRow: number }>;
 	missingInputs: string[];
@@ -44,6 +47,18 @@ export interface SellerChangeSetDecisionInput {
 	decision: "approve" | "reject";
 	actor: string;
 	decidedAt: string;
+}
+
+export interface SellerChangeSetResolverDiagnostics {
+	resolvedProposalIds: string[];
+	unresolvedProposalIds: string[];
+	ambiguousProposalIds: string[];
+	warnings: TargetSnapshotWarning[];
+}
+
+export interface SellerChangeSetEnrichmentResult {
+	changeSet: SellerChangeSet;
+	diagnostics: SellerChangeSetResolverDiagnostics;
 }
 
 export type SellerChangeSetInput = SellerActionPlan;
