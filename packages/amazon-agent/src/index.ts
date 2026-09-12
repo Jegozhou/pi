@@ -7,6 +7,18 @@ export type {
 	SellerActionSource,
 	SellerActionStage,
 } from "./action-plan/types.ts";
+export { buildSellerChangeSet } from "./change-set/build-change-set.ts";
+export { decideSellerChangeSet, requestSellerChangeSetApproval } from "./change-set/decide-change-set.ts";
+export type {
+	SellerChangeOperation,
+	SellerChangeProposal,
+	SellerChangeProposalReadiness,
+	SellerChangeSet,
+	SellerChangeSetDecision,
+	SellerChangeSetDecisionInput,
+	SellerChangeSetInput,
+	SellerChangeSetStatus,
+} from "./change-set/types.ts";
 export { diagnosePpc } from "./diagnostics/diagnose-ppc.ts";
 export {
 	diagnoseProfitability,
