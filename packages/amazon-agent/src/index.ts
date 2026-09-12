@@ -59,6 +59,7 @@ export {
 	verifySellerAmazonAdsMcpReadBinding,
 } from "./connectors/amazon-ads-mcp/read-bindings.ts";
 export { normalizeSellerAmazonAdsMcpSessionContext } from "./connectors/amazon-ads-mcp/session.ts";
+export { createSellerAmazonAdsMcpStateReader } from "./connectors/amazon-ads-mcp/state-reader.ts";
 export type {
 	SellerAmazonAdsMcpCapability,
 	SellerAmazonAdsMcpCapabilityClassification,
