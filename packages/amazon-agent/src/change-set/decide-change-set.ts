@@ -1,7 +1,26 @@
+import { computeSellerChangeSetContentDigest } from "../approval/approval-envelope.ts";
 import type { SellerChangeSet, SellerChangeSetDecisionInput } from "./types.ts";
 
 function isMutatingProposal(operation: string): boolean {
 	return operation !== "review-profitability";
+}
+
+function cloneChangeSet(changeSet: SellerChangeSet): SellerChangeSet {
+	return {
+		...changeSet,
+		sourceActionItemIds: [...changeSet.sourceActionItemIds],
+		proposals: changeSet.proposals.map((proposal) => ({
+			...proposal,
+			entity: { ...proposal.entity },
+			...(proposal.context ? { context: { ...proposal.context } } : {}),
+			...(proposal.decisionContext ? { decisionContext: { ...proposal.decisionContext } } : {}),
+			evidence: proposal.evidence.map((evidence) => ({ ...evidence })),
+			missingInputs: [...proposal.missingInputs],
+			before: proposal.before ? { ...proposal.before } : null,
+			after: proposal.after ? { ...proposal.after } : null,
+		})),
+		decision: changeSet.decision ? { ...changeSet.decision } : null,
+	};
 }
 
 export function requestSellerChangeSetApproval(changeSet: SellerChangeSet): SellerChangeSet {
@@ -20,19 +39,11 @@ export function requestSellerChangeSetApproval(changeSet: SellerChangeSet): Sell
 		throw new Error("Cannot request approval without at least one ready mutating proposal");
 	}
 
+	const cloned = cloneChangeSet(changeSet);
 	return {
-		...changeSet,
+		...cloned,
 		version: changeSet.version + 1,
 		status: "awaiting-approval",
-		sourceActionItemIds: [...changeSet.sourceActionItemIds],
-		proposals: changeSet.proposals.map((proposal) => ({
-			...proposal,
-			entity: { ...proposal.entity },
-			evidence: proposal.evidence.map((evidence) => ({ ...evidence })),
-			missingInputs: [...proposal.missingInputs],
-			before: proposal.before ? { ...proposal.before } : null,
-			after: proposal.after ? { ...proposal.after } : null,
-		})),
 		decision: null,
 	};
 }
@@ -58,23 +69,21 @@ export function decideSellerChangeSet(
 	assertCanonicalIsoTimestamp(input.decidedAt);
 
 	const outcome = input.decision === "approve" ? "approved" : "rejected";
-	return {
-		...changeSet,
+	const cloned = cloneChangeSet(changeSet);
+	const decided: SellerChangeSet = {
+		...cloned,
 		version: changeSet.version + 1,
 		status: outcome,
-		sourceActionItemIds: [...changeSet.sourceActionItemIds],
-		proposals: changeSet.proposals.map((proposal) => ({
-			...proposal,
-			entity: { ...proposal.entity },
-			evidence: proposal.evidence.map((evidence) => ({ ...evidence })),
-			missingInputs: [...proposal.missingInputs],
-			before: proposal.before ? { ...proposal.before } : null,
-			after: proposal.after ? { ...proposal.after } : null,
-		})),
 		decision: {
 			outcome,
 			actor,
 			decidedAt: input.decidedAt,
+			provenance: input.provenance ?? "trusted-caller",
 		},
 	};
+
+	if (outcome === "approved" && decided.decision) {
+		decided.decision.contentDigest = computeSellerChangeSetContentDigest(decided);
+	}
+	return decided;
 }
