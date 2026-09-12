@@ -5,21 +5,16 @@ import {
 } from "../../live-execution/account-scope.ts";
 import type { SellerAmazonAdsMcpNormalizedSession } from "./types.ts";
 
-const SENSITIVE_KEYS = new Set([
-	"accesstoken",
-	"refreshtoken",
-	"clientsecret",
-	"authorization",
-	"credential",
-	"credentials",
-	"password",
-	"secret",
-	"apikey",
-	"bearer",
-]);
+const SENSITIVE_KEY_FRAGMENTS = ["authorization", "credential", "password", "secret", "apikey", "bearer"] as const;
 
 function normalizedKey(key: string): string {
 	return key.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
+}
+
+function isSensitiveKey(key: string): boolean {
+	const normalized = normalizedKey(key);
+	if (normalized === "token" || normalized.endsWith("token")) return true;
+	return SENSITIVE_KEY_FRAGMENTS.some((fragment) => normalized.includes(fragment));
 }
 
 function assertNoSensitiveFields(value: unknown, path = "session"): void {
@@ -31,7 +26,7 @@ function assertNoSensitiveFields(value: unknown, path = "session"): void {
 	}
 	if (value === null || typeof value !== "object") return;
 	for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-		if (SENSITIVE_KEYS.has(normalizedKey(key))) {
+		if (isSensitiveKey(key)) {
 			throw new Error(`Amazon Ads MCP session contains sensitive credential field at ${path}.${key}`);
 		}
 		assertNoSensitiveFields(child, `${path}.${key}`);
