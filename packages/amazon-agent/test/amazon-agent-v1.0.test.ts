@@ -7,6 +7,7 @@ import {
 	buildSellerActionPlan,
 	buildSellerChangeSet,
 	buildSellerExecutionDryRun,
+	createSellerApprovalEnvelope,
 	decideSellerChangeSet,
 	enrichSellerChangeSet,
 	normalizeTargetSnapshot,
@@ -18,7 +19,7 @@ function fixture(name: string): string {
 }
 
 describe("Amazon Seller Agent V1.0 file-first acceptance", () => {
-	it("runs diagnosis through approved zero-write dry run deterministically", () => {
+	it("runs diagnosis through host-confirmed signed zero-write dry run deterministically", () => {
 		const ppc = buildPpcDiagnosisResult(fixture("search-term-report.csv"), "search-term-report.csv", {
 			targetAcos: 0.3,
 		});
@@ -81,10 +82,14 @@ describe("Amazon Seller Agent V1.0 file-first acceptance", () => {
 			decision: "approve",
 			actor: "v1-acceptance-seller",
 			decidedAt: "2026-09-13T00:00:00.000Z",
+			provenance: "host-ui-confirmation",
 		});
 		expect(approved.status).toBe("approved");
+		expect(approved.decision?.provenance).toBe("host-ui-confirmation");
 
-		const dryRun = buildSellerExecutionDryRun(approved, { expectedVersion: approved.version });
+		const secret = new TextEncoder().encode("v1-acceptance-secret");
+		const envelope = createSellerApprovalEnvelope(approved, secret);
+		const dryRun = buildSellerExecutionDryRun(envelope, secret, { expectedVersion: approved.version });
 		expect(dryRun.writesPerformed).toBe(false);
 		expect(dryRun.operations.map((operation) => operation.operation)).toEqual([
 			"add-negative-exact",
