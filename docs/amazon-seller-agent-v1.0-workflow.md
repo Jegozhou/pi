@@ -33,15 +33,15 @@ Possible deterministic findings include:
 - zero-sales waste → negative-exact candidate;
 - ACOS materially above target → bid-down candidate;
 - efficient discovery term → exact-target migration candidate;
-- efficient target → cautious scale candidate.
+- efficient source targeting → cautious scale candidate.
 
-Every finding contains the source file/row and rule ID.
+Every finding contains the source file/row and rule ID. Header-only reports, malformed numeric data, negative advertising metrics, or blank required numeric values fail closed instead of being treated as a successful diagnosis.
 
 ## Step 3 — Diagnose profitability when seller cost data exists
 
 Use `amazon_diagnose_profit` with a seller-supplied profitability CSV/TSV.
 
-Results are described as `known contribution profit` / `known contribution margin`. If costs are missing, the result remains `partial`; it is not called net profit.
+Results are described as `known contribution profit` / `known contribution margin`. If costs are missing, the result remains `partial`; it is not called net profit. A header-only profitability report is insufficient data and must fail rather than returning a successful zero-row diagnosis.
 
 ## Step 4 — Build the ranked Action Plan
 
@@ -55,18 +55,23 @@ Use `amazon_build_change_set`.
 
 At this point recommendations are not assumed executable. Missing campaign/ad-group/target IDs, current bids, destination scopes, or proposed values remain explicit `missingInputs` and keep the proposal `blocked`.
 
+Change Set identifiers are derived from a hash of the ordered action IDs rather than raw delimiter-based string concatenation.
+
 ## Step 6 — Resolve account-object identity from a local snapshot
 
-Use `amazon_enrich_change_set` when the seller supplies a local target snapshot with campaign/ad-group IDs and, ideally, targeting, match type, target ID, and bid.
+Use `amazon_enrich_change_set` when the seller supplies a local target snapshot with campaign/ad-group IDs and, ideally, targeting, match type, target ID, bid, and state.
 
 Resolver rules:
 
+- blank campaign/ad-group/target identifiers are not usable identity;
 - zero matches → blocked;
 - multiple conflicting identities → ambiguous/blocked;
+- duplicate rows for the same target ID that disagree on scope, current bid, targeting, match type, or state → ambiguous/blocked;
+- exact duplicate rows with the same identity and state may resolve;
 - never choose the "most likely" row;
 - IDs are preserved as identifiers, not used in arithmetic.
 
-A negative-exact proposal can become ready after its campaign/ad-group scope resolves. A bid-down proposal can resolve `targetId` and `currentBid` but still waits for deterministic bid simulation.
+A negative-exact proposal can become ready only after a non-empty campaign/ad-group scope resolves. A bid-down proposal can resolve `targetId` and a positive `currentBid` but still waits for deterministic bid simulation.
 
 ## Step 7 — Simulate the bid proposal
 
@@ -97,19 +102,40 @@ proposed bid  = $0.96
 
 The agent should say this is a deterministic policy proposal, not an Amazon-official/optimal bid prediction.
 
-## Step 8 — Human approval
+## Step 8 — Host-confirmed human approval
 
-Use `amazon_request_change_set_approval` only when no mutating proposal is blocked and at least one mutation is `ready`.
+Use `amazon_request_change_set_approval` only when no mutating proposal is blocked and at least one mutation is `ready`. This moves the Change Set to `awaiting-approval`; it does not prove that a human approved anything.
 
-Then present the exact Change Set to the user.
+The model may then call `amazon_decide_change_set`, but the call itself is not approval. The tool requires a dialog-capable Pi host and displays the exact Change Set ID, version, operation list, and before/after values through the host UI.
 
-Only after the user explicitly says approve/reject should the agent call `amazon_decide_change_set`.
+The human must click the host confirmation dialog. If no UI is available or the human declines, the decision fails closed.
 
-`approved` means approved for a future executor. It does not mean Amazon was changed.
+On approval:
 
-## Step 9 — Build the execution Dry Run
+- the host generates the decision timestamp;
+- the decision records `provenance = host-ui-confirmation`;
+- deterministic code seals the approved Change Set with a content digest;
+- the extension signs the exact approved content with an ephemeral per-extension HMAC key;
+- `amazon_decide_change_set` returns a signed approval envelope.
 
-Use `amazon_build_execution_dry_run` only for the exact approved Change Set version.
+The `actor` field is only a display label. It is not proof that a human approved the action.
+
+`approved` still means approved for a future executor. It does not mean Amazon was changed.
+
+## Step 9 — Verify the approval envelope and build the execution Dry Run
+
+Use `amazon_build_execution_dry_run` with the exact `approvalEnvelopeJson` returned from the host-confirmed approval step. The tool no longer accepts a bare approved Change Set JSON object.
+
+Before producing the Dry Run it verifies:
+
+- the HMAC signature belongs to the current extension approval session;
+- the content digest still matches the exact approved Change Set;
+- the exact approved version is current when `expectedVersion` is provided;
+- there are no blocked mutations;
+- before/after state and object identity are complete;
+- the operation type is supported.
+
+Any edit to target scope, IDs, current/proposed values, proposal content, decision content, digest, or signature after approval invalidates the artifact and stops the workflow.
 
 A valid dry run records operations such as:
 
@@ -134,6 +160,8 @@ writesPerformed = false
 
 Review-only profitability items are recorded as skipped analytical work.
 
+The approval signing key is intentionally ephemeral. If the Pi extension reloads or the process restarts, request fresh human approval rather than attempting to reuse or reconstruct an old envelope.
+
 ## LLM vs deterministic code
 
 The LLM is responsible for:
@@ -143,26 +171,31 @@ The LLM is responsible for:
 → 选择/编排工具
 → 解释确定性结果
 → 发现缺失输入
-→ 和人完成批准交互
+→ 请求宿主显示审批确认
 ```
 
-The deterministic domain layer is responsible for:
+The LLM is not the source of approval proof and cannot generate a valid approval signature by itself.
+
+The deterministic/host layer is responsible for:
 
 ```text
 解析
+→ 数据质量校验
 → 指标
 → 规则
 → 排序
 → ID匹配
 → Bid计算
 → 状态机
+→ 宿主人工确认
+→ 内容摘要/HMAC验签
 → Dry Run
 ```
 
-This boundary is intentional: changing the LLM should not change the same report's arithmetic or safety state transitions.
+This boundary is intentional: changing the LLM should not change the same report's arithmetic, identity resolution, approval proof, or safety state transitions.
 
 ## V1.0 stop point
 
 The workflow intentionally stops at Dry Run. There is no real Amazon Ads/Seller Central mutation adapter in the V1.0 file-first release candidate.
 
-A future real executor must remain a separate adapter below this pipeline so diagnosis, evidence, policy, and approval do not need to be rewritten.
+A future real executor must remain a separate adapter below this pipeline so diagnosis, evidence, policy, approval, and approval verification do not need to be rewritten.
