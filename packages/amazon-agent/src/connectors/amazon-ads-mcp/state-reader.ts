@@ -1,13 +1,10 @@
 import type { SellerExecutionOperation } from "../../execution/plan-types.ts";
 import {
 	assertSellerAmazonAdsAccountScope,
-	sellerAmazonAdsAccountScopeKey,
 	type SellerAmazonAdsAccountScope,
+	sellerAmazonAdsAccountScopeKey,
 } from "../../live-execution/account-scope.ts";
-import type {
-	SellerExecutionStateReader,
-	SellerTrustedOperationState,
-} from "../../live-execution/state-reader.ts";
+import type { SellerExecutionStateReader, SellerTrustedOperationState } from "../../live-execution/state-reader.ts";
 import { inventorySellerAmazonAdsMcpCapabilities } from "./capabilities.ts";
 import {
 	type SellerAmazonAdsMcpReadBinding,
