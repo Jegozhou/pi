@@ -4,8 +4,8 @@ import {
 	createFakeAmazonAdsExecutor,
 	createSellerApprovalEnvelope,
 	decideSellerChangeSet,
-	fakeNegativeExactScopeKey,
 	type FakeAmazonAdsState,
+	fakeNegativeExactScopeKey,
 	type SellerApprovalEnvelope,
 	type SellerChangeProposal,
 	type SellerChangeSet,
@@ -104,9 +104,9 @@ describe("Amazon Seller Agent V1.1 fake executor", () => {
 		expect(receipt.externalWritesPerformed).toBe(false);
 		expect(receipt.operations.map((operation) => operation.status)).toEqual(["applied", "applied"]);
 		expect(fakeState.bidsByTargetId.get("3001")).toBe(0.96);
-		expect(
-			fakeState.negativeExactByScope.has(fakeNegativeExactScopeKey("1001", "2001", "free trail shoes")),
-		).toBe(true);
+		expect(fakeState.negativeExactByScope.has(fakeNegativeExactScopeKey("1001", "2001", "free trail shoes"))).toBe(
+			true,
+		);
 	});
 
 	it("blocks a bid mutation when fake current state is stale", async () => {
