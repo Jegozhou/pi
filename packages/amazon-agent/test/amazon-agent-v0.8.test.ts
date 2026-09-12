@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
 	applyBidPolicyToChangeSet,
+	buildSellerActionPlan,
+	buildSellerChangeSet,
 	simulateBidChange,
+	type Finding,
 	type SellerChangeSet,
 } from "../src/index.ts";
 
@@ -53,6 +56,35 @@ function enrichedBidChangeSet(overrides: {
 	};
 }
 
+function highAcosFinding(): Finding {
+	return {
+		id: "finding:high-acos",
+		ruleId: "ppc.high-acos.v1",
+		category: "bid-down",
+		priority: "high",
+		confidence: "high",
+		entity: { type: "search-term", value: "trail running shoes" },
+		context: { campaignName: "SP Discovery", adGroupName: "Shoes", targeting: "running shoes", matchType: "BROAD" },
+		metrics: {
+			ctr: 0.02,
+			cvr: 0.1,
+			cpc: 1.2,
+			acos: 0.6,
+			roas: 1 / 0.6,
+			impressions: 1000,
+			clicks: 20,
+			spend: 24,
+			attributedOrders: 2,
+			attributedSales: 40,
+		},
+		evidence: [{ sourceFile: "search-term.csv", sourceRow: 2 }],
+		thresholds: { targetAcos: 0.3, highAcosMultiplier: 1.5 },
+		rationale: "Observed ACOS exceeds seller target.",
+		recommendedAction: { type: "reduce-bid-candidate", summary: "Reduce bid carefully." },
+		humanApprovalRequired: true,
+	};
+}
+
 describe("Amazon V0.8 bid simulator", () => {
 	it("calculates the proportional raw bid", () => {
 		const result = simulateBidChange({ currentBid: 1.2, observedAcos: 0.6, targetAcos: 0.3 });
@@ -89,6 +121,13 @@ describe("Amazon V0.8 bid simulator", () => {
 			{ maxDecreaseFraction: 0.5, currencyDecimals: 2 },
 		);
 		expect(result.proposedBid).toBe(0.92);
+	});
+
+	it("preserves observed and target ACOS from Finding through Action Plan into Change Set", () => {
+		const plan = buildSellerActionPlan({ ppcFindings: [highAcosFinding()], profitabilityFindings: [] });
+		const changeSet = buildSellerChangeSet(plan);
+		expect(plan.items[0].decisionContext).toEqual({ observedAcos: 0.6, targetAcos: 0.3 });
+		expect(changeSet.proposals[0].decisionContext).toEqual({ observedAcos: 0.6, targetAcos: 0.3 });
 	});
 
 	it("turns an enriched bid-down proposal into ready with explicit before and after", () => {
