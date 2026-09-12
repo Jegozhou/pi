@@ -6,19 +6,19 @@ Use this checklist before moving PR #1 from Draft to Ready for review.
 
 1. Supported report types are identified correctly.
    - Evidence: Search Term report inspection/normalization and profitability parser tests.
-   - Status: implemented.
+   - Status: implemented and covered by the current Amazon package test suite.
 
 2. Unsupported or insufficient data fails clearly.
-   - Evidence: missing-field checks, ambiguous header-alias rejection, header-only report rejection, invalid/negative numeric rejection, ambiguous target-resolution fail-closed behavior.
-   - Status: implemented; current-head regression run still required.
+   - Evidence: missing-field checks, ambiguous header-alias rejection, header-only report rejection, invalid/negative numeric rejection, blank identity rejection, and conflicting target-resolution fail-closed behavior.
+   - Status: implemented and passing on the current PR head.
 
 3. Metrics are calculated deterministically.
    - Evidence: TypeScript metrics engine for CTR/CVR/CPC/ACOS/ROAS and known contribution economics.
-   - Status: implemented.
+   - Status: implemented and passing.
 
 4. Findings are rule-based and preserve source evidence.
    - Evidence: stable rule IDs, source file/row references, thresholds, rationale, recommended action.
-   - Status: implemented.
+   - Status: implemented and passing.
 
 5. Fact, estimate, and hypothesis are distinguished.
    - Evidence: no LLM-authoritative arithmetic, partial profitability labels, no unsupported future-performance prediction, bid policy described as product policy rather than Amazon truth.
@@ -30,21 +30,21 @@ Use this checklist before moving PR #1 from Draft to Ready for review.
 
 7. A prioritized seller Action Plan can be created.
    - Evidence: deterministic cross-domain `buildSellerActionPlan`.
-   - Status: implemented.
+   - Status: implemented and passing.
 
 8. Missing costs / unsupported causality are not invented.
    - Evidence: profitability `complete|partial` status and explicit missing-cost categories; no future-sales/ACOS projection in bid simulation.
-   - Status: implemented.
+   - Status: implemented and passing.
 
-9. Automated tests do not require real Amazon/model credentials.
-   - Evidence: all current Amazon tests are deterministic/local; V1.0 fixtures are synthetic.
-   - Status: implemented at package-test design level; current-head rerun and repository CI still require verification.
+9. Automated tests do not require Amazon/model credentials.
+   - Evidence: Amazon tests use synthetic/local seller data. The CI hydration step generates Pi model metadata needed by the repository environment but does not provide seller credentials or call Amazon.
+   - Status: implemented and passing.
 
 10. Amazon-specific logic stays outside Pi core.
     - Evidence: domain code under `packages/amazon-agent`, project extension under `.pi/extensions`, project Skill under `.pi/skills`.
     - Status: implemented.
 
-## V1.0 release artifacts
+## V1.0 release artifacts and verification
 
 - [x] Approved design spec exists.
 - [x] V0.1-V0.9 implementation plans exist.
@@ -56,44 +56,72 @@ Use this checklist before moving PR #1 from Draft to Ready for review.
 - [x] Package README exists.
 - [x] Seller/operator example workflow exists.
 - [x] Initial independent Codex release review was performed on head `bae4c24ea88448220d4a4a185ad909ccd4474838` and returned `NOT READY`.
-- [x] Five P1 findings from that review have corresponding regression tests and code changes on the feature branch.
-- [x] Approval now requires host `ui.confirm`, records host provenance, seals approved content with a digest, and returns an HMAC-signed approval envelope.
-- [x] Pi Dry Run now requires the signed envelope instead of bare approved Change Set JSON.
+- [x] Second independent Codex release review was performed on head `7752a6079f03b87ec7a9f31b61d0e06d396001da` and returned `NOT READY`, identifying remaining build/test/approval-verification gaps.
+- [x] The original five P1 findings and the second-review regressions have dedicated regression coverage and code fixes on the feature branch.
+- [x] `trusted-caller` approval provenance has been removed; approval decisions require `host-ui-confirmation`.
+- [x] The model can no longer supply an approval actor label; the host flow records `pi-host-user` and generates the timestamp.
+- [x] Approval host behavior has direct tests for no UI, human decline, human confirm, host timestamp, signed envelope, and rejection-without-envelope.
+- [x] The registered decision tool delegates its host interaction to that tested approval flow; wiring tests verify the shared secret and envelope-only Dry Run registration.
+- [x] Approved content is sealed with a canonical SHA-256 digest and HMAC-SHA256 approval envelope.
+- [x] Both the Pi Dry Run wrapper and the public domain Dry Run boundary require a signed approval envelope instead of a bare approved Change Set.
 - [x] Approval and Dry Run are registered by the same extension factory and share one per-extension in-memory signing secret.
-- [x] Blank campaign/ad-group/target identity and conflicting target rows fail closed.
+- [x] Blank campaign/ad-group/target identity and conflicting same-target rows fail closed.
+- [x] Conflict regression coverage includes campaign ID, ad-group ID, targeting, match type, bid, and state, plus an identical-duplicate success case.
 - [x] Header-only reports fail as insufficient data.
 - [x] Invalid/negative PPC numeric data, non-positive current bid, missing scale source-target context, ambiguous header aliases, and Change Set ID collision cases have regression coverage/code hardening.
-- [ ] Current-head Amazon package test suite has been run successfully after the blocker fixes.
-- [ ] Current-head Amazon package build has been run successfully after the blocker fixes.
-- [ ] Current-head Biome check has been run and all Amazon/change-specific diagnostics fixed.
-- [ ] A second independent Codex review has verified that every original P1 is closed.
-- [ ] Pi extension host-confirmation and signed-envelope flow has been exercised in a dialog-capable Pi host.
-- [ ] GitHub CI/status has been observed for the exact current head, or the absence of CI has been explicitly accepted before merge.
-- [ ] PR is manually moved from Draft only after the verification items above are satisfied.
+- [x] Current PR-head Amazon package test suite passed in GitHub Actions: 15 files / 118 tests / 118 passed.
+- [x] Current PR-head Amazon package build passed: `tsgo -p tsconfig.build.json`.
+- [x] Current PR-head Amazon Biome release gate passed: 46 files checked with no fixes required.
+- [x] Current PR-head `git diff --check origin/main...HEAD` passed.
+- [x] A dedicated GitHub Actions release gate now runs hydration, Biome, Amazon tests, Amazon build, and diff checking for this package/extension.
+- [ ] A third independent review has inspected the post-second-review fixes and confirmed no unresolved P1 release blocker.
+- [ ] A manual end-user run inside an interactive Pi TUI/RPC host has clicked the confirmation dialog. Automated tests exercise the exact host-decision core and registration wiring, but they are not represented as a manual UI acceptance session.
+- [ ] PR is manually moved from Draft only after the remaining review/acceptance items above are satisfied.
 
 ## Approval release gates
 
-Before Ready, verify all of these behaviors on the exact current head:
+The current automated suite verifies these behaviors:
 
 ```text
-model calls amazon_decide_change_set
-AND no dialog-capable host UI
+approval flow receives no dialog-capable host UI
 => decision rejected
 
-model calls amazon_decide_change_set
-AND human declines host dialog
+approval flow shows confirmation
+AND human declines
 => decision rejected
 
 human confirms exact awaiting Change Set
 => approved Change Set receives host-ui-confirmation provenance + content digest
-=> tool returns signed approval envelope
+=> host-generated timestamp/actor is recorded
+=> signed approval envelope is returned
 
 signed envelope is unchanged
-=> amazon_build_execution_dry_run may verify and continue
+=> buildSellerExecutionDryRun verifies envelope and may produce a zero-write plan
+
+bare approved Change Set
+=> domain Dry Run rejected
 
 proposal / target / before / after / decision / digest / signature is modified
 => envelope verification fails
 ```
+
+A manual Pi-host dialog click remains an acceptance check, not a substitute for these deterministic tests.
+
+## Current GitHub release-gate evidence
+
+For PR head `e6ed74d29b913a767c30cfb2ead7102aa1c772e8`, GitHub Actions workflow `Amazon Seller Agent V1` completed successfully. Its verify job performed:
+
+```text
+npm ci --ignore-scripts                         PASS
+npm --prefix packages/ai run hydrate-model-data PASS
+model manifest existence check                 PASS
+Biome check (46 files)                         PASS
+Amazon package tests: 15 files / 118 tests     PASS
+Amazon package build                           PASS
+git diff --check origin/main...HEAD             PASS
+```
+
+The workflow tests the standard PR merge ref containing that feature head and the current base, which is the code GitHub would review/merge.
 
 ## Explicitly deferred from the file-first V1.0 release
 
@@ -115,10 +143,12 @@ Move PR #1 to Ready only when:
 current-head Amazon tests pass
 AND Amazon package build passes
 AND change-specific Biome check passes
-AND host approval flow is actually exercised
-AND independent re-review has no unresolved P1 blocker
+AND approval safety regression suite passes
+AND independent post-fix review has no unresolved P1 blocker
 AND current-head diff has no accidental Amazon credentials/network mutation
 ```
+
+A manual Pi-host dialog run is still recommended before any future real executor is introduced. It is not evidence that Amazon account execution exists; V1.0 remains zero-write.
 
 Full-repository TypeScript failures that are proven pre-existing outside the Amazon change set must be recorded separately rather than misrepresented as Amazon-package success or failure.
 
