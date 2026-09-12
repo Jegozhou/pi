@@ -13,6 +13,7 @@ V1.2 introduces four domain boundaries:
    - `marketplaceId`
    - region (`NA`, `EU`, or `FE`)
    - exact V1.1 execution plan ID and idempotency key
+   - canonical SHA-256 digest of the complete execution plan, including operations and preconditions
    - exact source Change Set ID/version and approved-content digest
    - issued/expires timestamps and nonce
    - `trusted-host` provenance
@@ -48,9 +49,9 @@ LLM / chat
 host / future authenticated connector
   ↓ supplies trusted account scope
 approved V1.1 SellerExecutionPlan
-  ↓ exact plan + scope bound together
+  ↓ exact plan content + scope bound together
 signed SellerExecutionAuthorizationEnvelope
-  ↓ verify signature + expiry + plan identity
+  ↓ verify signature + expiry + plan identity + full plan content digest
 SellerExecutionStateReader
   ↓ trusted current state
 full-batch state preflight
@@ -73,17 +74,21 @@ STOP — V1.2 performs no Amazon mutation
 
 The authorization envelope is created by a trusted boundary, not by the model. It binds one exact plan to one exact account scope for a limited time.
 
+The envelope includes `executionPlanContentDigest`, a canonical SHA-256 digest over the complete `SellerExecutionPlan`. This means authorization is bound not only to the plan ID but also to the actual operation list, target IDs, before/after values, preconditions, operation idempotency keys, approval metadata, and skipped-review IDs.
+
 Verification fails if:
 
 - the account scope is edited;
 - the plan ID/idempotency key changes;
+- any execution-plan operation or precondition changes while the identity fields are preserved;
 - the source Change Set identity/version changes;
 - the approved-content digest changes;
-- the content digest or signature changes;
+- the plan-content digest changes;
+- the authorization content digest or signature changes;
 - the authorization has not reached `issuedAt`;
 - the authorization has expired.
 
-This is the first hard boundary against applying an otherwise valid seller decision to the wrong Amazon Ads profile.
+This is the first hard boundary against applying an otherwise valid seller decision to the wrong Amazon Ads profile or executing mutated operation content after authorization.
 
 ## Trusted state semantics
 
