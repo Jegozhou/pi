@@ -98,6 +98,37 @@ describe("Amazon Seller Agent V1.3 MCP capability firewall", () => {
 		expect(first.capabilities[0]?.descriptorDigest).not.toBe(annotationInventory.capabilities[0]?.descriptorDigest);
 	});
 
+	it("rejects credential-bearing descriptor metadata without blocking ordinary pagination token schema fields", () => {
+		const paginationDescriptor = {
+			name: "catalog-read-with-pagination",
+			inputSchema: {
+				type: "object",
+				properties: { nextToken: { type: "string" } },
+			},
+			annotations: { readOnlyHint: true },
+		} as SellerAmazonAdsMcpToolDescriptor;
+		expect(inventorySellerAmazonAdsMcpCapabilities([paginationDescriptor]).capabilities).toHaveLength(1);
+
+		for (const sensitive of [
+			{ accessToken: "SECRET_ACCESS_TOKEN" },
+			{ oauthAccessToken: "SECRET_ACCESS_TOKEN" },
+			{ amazonRefreshToken: "SECRET_REFRESH_TOKEN" },
+			{ lwaClientSecret: "SECRET_CLIENT_SECRET" },
+			{ nested: { sessionToken: "SECRET_SESSION_TOKEN" } },
+			{ authorization: "Bearer SECRET" },
+		]) {
+			expect(() =>
+				inventorySellerAmazonAdsMcpCapabilities([
+					{
+						name: "catalog-read-with-secret-metadata",
+						annotations: { readOnlyHint: true },
+						_meta: sensitive,
+					} as unknown as SellerAmazonAdsMcpToolDescriptor,
+				]),
+			).toThrow(/credential|secret|token|authorization/i);
+		}
+	});
+
 	it("returns an immutable copy rather than caller-owned descriptor objects", () => {
 		const source = descriptors();
 		const inventory = inventorySellerAmazonAdsMcpCapabilities(source);
