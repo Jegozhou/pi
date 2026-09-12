@@ -125,6 +125,10 @@ function readyChangeSet(): SellerChangeSet {
 	};
 }
 
+function hostDecisionInput(decision: "approve" | "reject", actor = "seller@example", decidedAt = "2026-09-13T00:00:00.000Z") {
+	return { decision, actor, decidedAt, provenance: "host-ui-confirmation" as const };
+}
+
 describe("Amazon Seller Agent V0.6 change sets and approval gate", () => {
 	it("creates traceable proposals from action-plan items", () => {
 		const set = buildSellerChangeSet(actionPlan());
@@ -181,19 +185,15 @@ describe("Amazon Seller Agent V0.6 change sets and approval gate", () => {
 		expect(result.decision).toBeNull();
 	});
 
-	it("records explicit approval but does not mark anything executed", () => {
+	it("records explicit host-confirmed approval but does not mark anything executed", () => {
 		const awaiting = requestSellerChangeSetApproval(readyChangeSet());
-		const approved = decideSellerChangeSet(awaiting, {
-			decision: "approve",
-			actor: "seller@example",
-			decidedAt: "2026-09-13T00:00:00.000Z",
-		});
+		const approved = decideSellerChangeSet(awaiting, hostDecisionInput("approve"));
 		expect(approved.status).toBe("approved");
 		expect(approved.decision).toMatchObject({
 			outcome: "approved",
 			actor: "seller@example",
 			decidedAt: "2026-09-13T00:00:00.000Z",
-			provenance: "trusted-caller",
+			provenance: "host-ui-confirmation",
 		});
 		expect(approved.decision?.contentDigest).toMatch(/^[a-f0-9]{64}$/);
 		expect(approved).not.toHaveProperty("executedAt");
@@ -202,40 +202,21 @@ describe("Amazon Seller Agent V0.6 change sets and approval gate", () => {
 
 	it("records rejection explicitly", () => {
 		const awaiting = requestSellerChangeSetApproval(readyChangeSet());
-		const rejected = decideSellerChangeSet(awaiting, {
-			decision: "reject",
-			actor: "seller@example",
-			decidedAt: "2026-09-13T00:00:00.000Z",
-		});
+		const rejected = decideSellerChangeSet(awaiting, hostDecisionInput("reject"));
 		expect(rejected.status).toBe("rejected");
 		expect(rejected.decision?.outcome).toBe("rejected");
+		expect(rejected.decision?.provenance).toBe("host-ui-confirmation");
 	});
 
 	it("fails closed on invalid lifecycle transitions", () => {
 		expect(() =>
-			decideSellerChangeSet(buildSellerChangeSet(actionPlan()), {
-				decision: "approve",
-				actor: "seller@example",
-				decidedAt: "2026-09-13T00:00:00.000Z",
-			}),
+			decideSellerChangeSet(buildSellerChangeSet(actionPlan()), hostDecisionInput("approve")),
 		).toThrow(/awaiting-approval/i);
 	});
 
 	it("validates actor and timestamp and remains deterministic", () => {
 		const awaiting = requestSellerChangeSetApproval(readyChangeSet());
-		expect(() =>
-			decideSellerChangeSet(awaiting, {
-				decision: "approve",
-				actor: " ",
-				decidedAt: "2026-09-13T00:00:00.000Z",
-			}),
-		).toThrow(/actor/i);
-		expect(() =>
-			decideSellerChangeSet(awaiting, {
-				decision: "approve",
-				actor: "seller@example",
-				decidedAt: "not-a-date",
-			}),
-		).toThrow(/timestamp/i);
+		expect(() => decideSellerChangeSet(awaiting, hostDecisionInput("approve", " "))).toThrow(/actor/i);
+		expect(() => decideSellerChangeSet(awaiting, hostDecisionInput("approve", "seller@example", "not-a-date"))).toThrow(/timestamp/i);
 	});
 });
