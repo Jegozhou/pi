@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import {
 	assertSellerAmazonAdsAccountScope,
-	sellerAmazonAdsAccountScopeKey,
 	type SellerAmazonAdsAccountScope,
+	sellerAmazonAdsAccountScopeKey,
 } from "../../live-execution/account-scope.ts";
 import { requireSellerAmazonAdsMcpReadCandidate } from "./capabilities.ts";
 import type { SellerAmazonAdsMcpCapabilityInventory } from "./types.ts";
