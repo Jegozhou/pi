@@ -59,6 +59,10 @@ describe("Amazon Seller Agent V1.3 Amazon Ads MCP session boundary", () => {
 			{ ...session(), clientSecret: "secret-client" },
 			{ ...session(), authorization: "Bearer secret" },
 			{ ...session(), credentials: { refreshToken: "nested-secret" } },
+			{ ...session(), oauthAccessToken: "prefixed-secret-access-token" },
+			{ ...session(), amazonRefreshToken: "prefixed-secret-refresh-token" },
+			{ ...session(), lwaClientSecret: "prefixed-client-secret" },
+			{ ...session(), connector: { sessionToken: "nested-session-token" } },
 		]) {
 			expect(() => normalizeSellerAmazonAdsMcpSessionContext(sensitive)).toThrow(
 				/secret|credential|token|authorization/i,
