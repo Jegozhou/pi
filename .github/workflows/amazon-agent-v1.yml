@@ -12,6 +12,7 @@ on:
       - "docs/amazon-seller-agent-v1.0-*.md"
   pull_request:
     paths:
+      - ".github/workflows/amazon-agent-v1.yml"
       - ".pi/extensions/amazon-seller/**"
       - ".pi/skills/amazon-seller-agent.md"
       - "packages/amazon-agent/**"
@@ -41,6 +42,9 @@ jobs:
 
       - name: Hydrate Pi model data for extension host tests
         run: npm --prefix packages/ai run hydrate-model-data
+
+      - name: Assert host-test model manifest exists
+        run: test -f packages/ai/src/providers/data/.manifest.json
 
       - name: Check Amazon Agent formatting
         run: npx biome check --error-on-warnings .pi/extensions/amazon-seller packages/amazon-agent/src packages/amazon-agent/test
