@@ -35,7 +35,7 @@ export { enrichSellerChangeSet } from "./change-set/enrich-change-set.ts";
 export type {
 	SellerChangeOperation,
 	SellerChangeProposal,
-SellerChangeProposalReadiness,
+	SellerChangeProposalReadiness,
 	SellerChangeSet,
 	SellerChangeSetDecision,
 	SellerChangeSetDecisionInput,
