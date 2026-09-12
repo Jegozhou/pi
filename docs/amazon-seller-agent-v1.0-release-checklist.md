@@ -9,7 +9,7 @@ Use this checklist before moving PR #1 from Draft to Ready for review.
    - Status: implemented.
 
 2. Unsupported or insufficient data fails clearly.
-   - Evidence: missing-field checks, header-only report rejection, invalid/negative numeric rejection, ambiguous target-resolution fail-closed behavior.
+   - Evidence: missing-field checks, ambiguous header-alias rejection, header-only report rejection, invalid/negative numeric rejection, ambiguous target-resolution fail-closed behavior.
    - Status: implemented; current-head regression run still required.
 
 3. Metrics are calculated deterministically.
@@ -59,9 +59,10 @@ Use this checklist before moving PR #1 from Draft to Ready for review.
 - [x] Five P1 findings from that review have corresponding regression tests and code changes on the feature branch.
 - [x] Approval now requires host `ui.confirm`, records host provenance, seals approved content with a digest, and returns an HMAC-signed approval envelope.
 - [x] Pi Dry Run now requires the signed envelope instead of bare approved Change Set JSON.
+- [x] Approval and Dry Run are registered by the same extension factory and share one per-extension in-memory signing secret.
 - [x] Blank campaign/ad-group/target identity and conflicting target rows fail closed.
 - [x] Header-only reports fail as insufficient data.
-- [x] Invalid/negative PPC numeric data, non-positive current bid, missing scale source-target context, and Change Set ID collision cases have regression coverage/code hardening.
+- [x] Invalid/negative PPC numeric data, non-positive current bid, missing scale source-target context, ambiguous header aliases, and Change Set ID collision cases have regression coverage/code hardening.
 - [ ] Current-head Amazon package test suite has been run successfully after the blocker fixes.
 - [ ] Current-head Amazon package build has been run successfully after the blocker fixes.
 - [ ] Current-head Biome check has been run and all Amazon/change-specific diagnostics fixed.
