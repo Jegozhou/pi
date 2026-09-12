@@ -6,10 +6,7 @@ import {
 	verifySellerExecutionAuthorizationEnvelope,
 } from "./authorization.ts";
 import type { SellerExecutionIdempotencyStore } from "./idempotency-store.ts";
-import {
-	preflightSellerExecutionState,
-	type SellerLiveOperationPreflight,
-} from "./preflight.ts";
+import { preflightSellerExecutionState, type SellerLiveOperationPreflight } from "./preflight.ts";
 import type { SellerExecutionStateReader } from "./state-reader.ts";
 
 export type SellerLiveExecutionPreflightStatus =
@@ -72,7 +69,12 @@ export async function buildSellerLiveExecutionPreflight(
 		options.now !== undefined ? { now: options.now } : {},
 	);
 	const statePreflight = await preflightSellerExecutionState(plan, authorization.accountScope, stateReader);
-	const base = resultBase(plan, authorization.accountScope, authorizationEnvelope.proof.contentDigest, statePreflight.operations);
+	const base = resultBase(
+		plan,
+		authorization.accountScope,
+		authorizationEnvelope.proof.contentDigest,
+		statePreflight.operations,
+	);
 
 	if (statePreflight.status === "blocked-unavailable") {
 		return { ...base, status: "blocked-unavailable", reservationId: null };
