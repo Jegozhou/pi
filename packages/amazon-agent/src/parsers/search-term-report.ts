@@ -96,7 +96,7 @@ function parseNumber(
 ): { value: number | null; warning: ReportWarning | null } {
 	if (rawValue === null || rawValue.trim() === "") return { value: null, warning: null };
 	const value = Number(rawValue.trim());
-	if (!Number.isFinite(value)) {
+	if (!Number.isFinite(value) || value < 0) {
 		return {
 			value: null,
 			warning: {
