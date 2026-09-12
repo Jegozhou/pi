@@ -22,6 +22,7 @@ V1.1 adds an execution-safety layer after approval:
 V1.2 adds the trusted boundary required before a real Amazon Ads adapter may exist:
 
 - bind one exact execution plan to one exact Amazon Ads `profileId + marketplaceId + region` scope;
+- bind the complete canonical execution-plan content, including operations and preconditions, into the signed authorization;
 - issue and verify a signed, expiring `trusted-host` execution authorization;
 - read current account state only through a read-only `SellerExecutionStateReader` contract;
 - fail the whole batch closed when any operation is stale or unavailable;
@@ -52,7 +53,7 @@ seller request
 future-live boundary in V1.2:
 SellerExecutionPlan
 → trusted host/connector account scope
-→ signed execution authorization
+→ signed execution authorization over exact plan content
 → trusted current-state read
 → full-batch state preflight
 → account-scoped idempotency reservation
@@ -195,11 +196,12 @@ V1.2 adds a second trust boundary beyond V1.1 fake execution.
 - region;
 - source Change Set identity/version;
 - approved-content digest;
+- canonical digest of the complete execution plan, including operations and preconditions;
 - issuance/expiry window;
 - nonce;
 - `trusted-host` provenance.
 
-HMAC-SHA256 verification fails if the account scope, plan identity, approved digest, timestamps, nonce, digest, or signature is changed.
+HMAC-SHA256 verification fails if the account scope, plan identity, complete plan content, approved digest, timestamps, nonce, authorization digest, or signature is changed. Preserving the original `planId` while mutating an operation is therefore rejected.
 
 ### Trusted current-state reader
 
@@ -278,7 +280,7 @@ Synthetic V1.0 fixtures live under `test/fixtures/v1.0/`. V1.0/V1.1 regression s
 
 V1.2 adds focused coverage for:
 
-- 7 execution-authorization cases including scope/plan tamper and expiry;
+- 8 execution-authorization cases including scope tamper, plan-identity tamper, operation-content tamper, and expiry;
 - 9 trusted-state cases including stale, unavailable, already-desired, and full-batch fail-closed behavior;
 - 8 account-scoped idempotency cases including replay/conflict/account isolation;
 - 9 coordinator cases covering verification order, no reservation on blocked/no-op state, replay, conflict, and `ready-for-live-adapter`.
