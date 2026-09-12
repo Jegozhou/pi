@@ -12,6 +12,7 @@ import {
 	type SellerActionPlan,
 	type SellerChangeSet,
 } from "../../../packages/amazon-agent/src/index.ts";
+import { registerAmazonEnrichmentTool } from "./enrichment-tool.ts";
 import { readAmazonReportFile } from "./file-input.ts";
 
 function parseJsonObject<T>(raw: string, label: string): T {
@@ -242,4 +243,5 @@ export default function (pi: ExtensionAPI) {
 	pi.registerTool(buildChangeSetTool);
 	pi.registerTool(requestChangeSetApprovalTool);
 	pi.registerTool(decideChangeSetTool);
+	registerAmazonEnrichmentTool(pi);
 }
